@@ -40,7 +40,9 @@ def desired_state(cfg, snap):
             "description": t.get("description") or "",
             "privacy": t.get("privacy") or "closed",
             "members": set(t.get("members") or []) | set(t.get("maintainers") or []),
-            "maintainers": set(t.get("maintainers") or []),
+            # org owners are implicit maintainers of every team; GitHub reports them as such, so an owner listed
+            # under maintainers would otherwise produce a role change on every run
+            "maintainers": set(t.get("maintainers") or []) - owners,
             "repos": grants,
         }
     direct = {}
