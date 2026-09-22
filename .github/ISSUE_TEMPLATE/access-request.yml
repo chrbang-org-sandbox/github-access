@@ -1,6 +1,6 @@
-# Generert av tools/gen-issue-form.py fra access.yaml. Ikke rediger for hånd.
+# Generert av tools/gen-issue-form.py. Team fra access.yaml, brukere fra orgen (--users). Ikke rediger for hånd.
 name: Be om tilgang til et team
-description: Legg deg selv eller en kollega til i et team, eller fjern. Lager en pull request som platform-teamet godkjenner.
+description: Legg deg selv eller kolleger til i et team, eller fjern. Lager en pull request som platform-teamet godkjenner.
 title: Tilgangsforespørsel
 labels:
 - access-request
@@ -33,12 +33,25 @@ body:
     - Platform (platform)
   validations:
     required: true
-- type: input
-  id: login
+- type: dropdown
+  id: who
   attributes:
-    label: GitHub-brukernavn
-    description: La stå tomt for deg selv. Fyll inn for å be på vegne av en kollega.
-    placeholder: f.eks. octocat
+    label: Hvem
+    description: Deg selv er forhåndsvalgt. Velg flere for å be på vegne av kolleger.
+    multiple: true
+    options:
+    - Meg selv (den som sender inn)
+    - AdrianGrotter
+    - chrbang
+    - KennethHoff
+    - pedarn
+    default: 0
+- type: input
+  id: others
+  attributes:
+    label: Andre brukernavn
+    description: Kun for folk som ikke står i lista over, f.eks. nyinviterte. Kommaseparert.
+    placeholder: f.eks. octocat, monalisa
 - type: textarea
   id: reason
   attributes:

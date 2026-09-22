@@ -26,6 +26,8 @@ Krever `gh` innlogget som org owner med scope `repo`, `admin:org`, og `jq` + `py
 | `tools/draft-clients.py` | *Midlertidig, slettes etter fase 2.* Utkast til `clients.yaml` fra prefiksene i aktive repos. Skriver hele fila på nytt. |
 | `tools/restructure.py` | *Midlertidig, slettes etter fase 2.* Lager `access.yaml` etter modellen under: ett team per aktiv kunde. `--phase 1` (default) er additiv, `--phase 2` fjerner legacy. Overskriver manuelle rettelser. |
 | `tools/ui.py` | Lokalt web-grensesnitt (127.0.0.1:8787) for å se en persons team og roller, og legge til/fjerne medlemmer. Skriver kun `access.yaml`; commit og PR gjøres etterpå. |
+| `tools/gen-issue-form.py` | Genererer issue-skjemaet: team fra `access.yaml`, brukere fra org-medlemskapet (`--users`). `--check` sjekker bare team-lista. |
+| `tools/parse-issue.py` | Leser et innsendt skjema til handling, team og brukerliste. Brukes av `access-request.yml`; tester i `tools/test_parse_issue.py`. |
 | `report.template.html` | Mal for rapporten. |
 
 ## access.yaml
@@ -58,7 +60,8 @@ Team som ikke finnes i fila blir slettet av apply. Direkte collaborators som ikk
 
 | Workflow | Trigger | Gjør |
 |---|---|---|
-| `access-request.yml` | nytt issue med label `access-request` | leser skjemaet, setter tittel («Add octocat to Kunde A team»), kjører `tools/request.py`, lager branch og PR, kommenterer på issuet |
+| `access-request.yml` | nytt issue med label `access-request` | leser skjemaet med `tools/parse-issue.py` (én eller flere brukere), setter tittel («Add octocat to Kunde A team»), kjører `tools/request.py` per bruker, lager branch og PR, kommenterer på issuet |
+| `refresh-form.yml` | daglig, manuelt, og etter `apply.yml` | regenererer brukerlista («Hvem») i issue-skjemaet fra org-medlemskapet og åpner en PR hvis den er endret |
 | `check.yml` | PR som endrer `access.yaml` m.m. | validerer YAML og skjema, tar snapshot, poster planen som PR-kommentar |
 | `apply.yml` | merge til `main` med endret `access.yaml` | snapshot → plan → `tools/apply.py --auto` → nytt snapshot → planen skal være tom. Kommenterer resultat på PR-en |
 
@@ -81,7 +84,8 @@ på PR-en (satt av en owner) eller `workflow_dispatch` med `allow_structural`.
 6. Varsling: `/github subscribe <org>/github-access pulls issues` i en Slack-kanal, og Scheduled reminders på team `platform`.
 7. Labels `access-request` og `godkjent-strukturendring` må finnes i repoet (issue-skjemaet setter ikke labels som mangler):
    `gh label create access-request` og `gh label create godkjent-strukturendring`.
-8. Kjør `tools/gen-issue-form.py` etter hver endring av team-lista, ellers feiler `check.yml`.
+8. Kjør `tools/gen-issue-form.py` etter hver endring av team-lista, ellers feiler `check.yml`. Brukerlista i skjemaet
+   («Hvem», alle org-medlemmer) holdes oppdatert av `refresh-form.yml`; lokalt: `tools/gen-issue-form.py --users`.
 
 ## Modell
 

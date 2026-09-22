@@ -4,6 +4,7 @@
 
 1. **Du ber om tilgang.** Åpne et issue i dette repoet med skjemaet «Be om tilgang til et team».
    Velg team og skriv én linje om hvorfor. Du er logget inn med GitHub-brukeren din, så vi vet hvem du er.
+   Under «Hvem» er du selv forhåndsvalgt. Velg flere fra lista for å be på vegne av kolleger i samme forespørsel.
 
 2. **En pull request lages automatisk.** Et script legger navnet ditt inn i `access.yaml` og åpner en PR.
    Fila er lista over hvem som skal ha tilgang til hva. Du får en kommentar på issuet med lenke.
