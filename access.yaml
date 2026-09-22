@@ -16,8 +16,9 @@ teams:
   kunde-a:
     name: Kunde A
     description: Kunde A
-    members:
+    maintainers:
     - chrbang
+    members: []
     repos:
       write:
       - repository-1
