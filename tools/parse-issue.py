@@ -27,9 +27,6 @@ def parse(body, author):
         if not raw:
             continue
         logins.append(author if raw.startswith(SELF_PREFIX) else raw)
-    for raw in re.split(r"[,\s]+", f.get("Andre brukernavn", "")):
-        if raw.strip():
-            logins.append(raw.strip().lstrip("@"))
     logins = list(dict.fromkeys(logins)) or [author]
     for l in logins:
         if not LOGIN_RE.fullmatch(l):

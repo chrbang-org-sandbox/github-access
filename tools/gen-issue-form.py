@@ -57,7 +57,6 @@ def render(users):
             {"type": "dropdown", "id": "team", "attributes": {"label": "Team", "options": team_options}, "validations": {"required": True}},
             {"type": "dropdown", "id": "who", "attributes": {"label": "Hvem", "description": "Deg selv er forhåndsvalgt. Velg flere for å be på vegne av kolleger.",
                 "multiple": True, "options": [SELF] + users, "default": 0}},
-            {"type": "input", "id": "others", "attributes": {"label": "Andre brukernavn", "description": "Kun for folk som ikke står i lista over, f.eks. nyinviterte. Kommaseparert.", "placeholder": "f.eks. octocat, monalisa"}},
             {"type": "textarea", "id": "reason", "attributes": {"label": "Begrunnelse", "description": "Hvilket prosjekt, fra når, hvor lenge."}, "validations": {"required": True}},
         ],
     }
