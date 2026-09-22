@@ -73,15 +73,24 @@ på PR-en (satt av en owner) eller `workflow_dispatch` med `allow_structural`.
    Legg App ID og privat nøkkel som secrets `ACCESS_APP_ID` og `ACCESS_APP_PRIVATE_KEY` i et **Environment** `github-app`.
    Deployment branches: *No restriction*. `check.yml` kjører på PR-merge-refs, som en branch-policy ville avvist. Tillitsgrensen er
    uansett write på repoet, som bare `platform` har.
-3. **Team `platform`** med write på repoet (står i `access.yaml`). Alle andre har read via base permission.
-4. **Ruleset på `main`**: krev PR, 1 godkjenning, godkjenning fra code owner, forkast godkjenning ved ny push,
-   blokker force push. Tom bypass-liste.
+3. **Team `platform`** med write på repoet (står i `access.yaml`), **minst to personer**: forfatter kan ikke godkjenne egen PR,
+   så én person alene låser flyten. Alle andre har read via base permission.
+4. **Ruleset på `main`**: Enforcement Active, target default branch. Restrict deletions, Block force pushes, Require a pull request →
+   1 approval, Dismiss stale approvals, Require approval of the most recent reviewable push, **Require review from specific teams** →
+   `platform` med filmønstre `access.yaml`, `clients.yaml`, `audit.sh`, `tools/**`, `.github/**`. Bypass list: **tom**.
+   (Dette er GitHubs nye variant av «code owner review»; CODEOWNERS-fila gir i tillegg automatisk review-forespørsel.)
+   Krever GitHub Team-plan for private repos.
 5. Repo-innstillinger: Pull requests → «Allow auto-merge» *på*, hvis godkjenning skal være nok.
    («Allow GitHub Actions to create and approve pull requests» trengs ikke: PR-er lages med App-tokenet, ikke `GITHUB_TOKEN`.)
 6. Varsling: `/github subscribe <org>/github-access pulls issues` i en Slack-kanal, og Scheduled reminders på team `platform`.
 7. Labels `access-request` og `godkjent-strukturendring` må finnes i repoet (issue-skjemaet setter ikke labels som mangler):
    `gh label create access-request` og `gh label create godkjent-strukturendring`.
 8. Kjør `tools/gen-issue-form.py` etter hver endring av team-lista, ellers feiler `check.yml`.
+9. `.github/CODEOWNERS` må peke på riktig org: `@<org>/platform`.
+10. **Før første push av `access.yaml` til `main`:** deaktiver workflowen «Utfør tilganger» (Actions → workflow → ··· → Disable).
+    Den trigges på hver endring av `access.yaml` på `main`, også den første. Aktiver igjen etter at fase 1 er gjennomgått og kjørt.
+
+Se [RUNBOOK.md](RUNBOOK.md) for hele rekkefølgen ved innføring i en ekte org.
 
 ## Modell
 
@@ -127,7 +136,7 @@ Etter at alt er satt: `./audit.sh` skal vise `fork av private: nei` og `public r
 1. `./audit.sh` (365 dagers vindu), `tools/draft-clients.py > clients.yaml`, rett fila for hånd.
 2. `tools/restructure.py > access.yaml`. Les gjennom, PR.
 3. `tools/plan.py` skal kun vise `org`, `team+`, `member+`, `grant+`. `tools/apply.py`.
-4. `./audit.sh` → `report.html`: gap = 0, nye team under «Endringer». La det gå en uke; tech leads legger til de som mangler.\n   `clients.yaml` gjennomgås først: `name` skal være fullt kundenavn, det blir team-navnet i GitHub.
+4. `./audit.sh` → `report.html`: gap = 0, nye team under «Endringer». La det gå en uke; forespørsler fanger opp de som mangler.
 5. **Fase 2**: fjern blokkene merket `FASE 2` i `access.yaml` (eller `tools/restructure.py --phase 2 > access.yaml`), PR, varsle utviklerne med dato. `tools/plan.py` viser nå `grant-`, `direct-`, `team-`. `tools/apply.py`.
 6. `./audit.sh && tools/plan.py` → «Ingen endringer», gap = 0.
 
