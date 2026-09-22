@@ -1,0 +1,16 @@
+# Repo -> kunde for sandkassen. Generiske navn; kundene er fiktive.
+# match = glob på reponavn, case-insensitive. Aktive repos uten match gir advarsel i tools/plan.py.
+# name = team-navn i GitHub; team-slug utledes (Kunde A -> kunde-a).
+clients:
+  kunde-a:
+    name: Kunde A
+    match: [repository-1, repository-2]
+  kunde-b:
+    name: Kunde B
+    match: [repository-3]
+  kunde-c:
+    name: Kunde C
+    match: [repository-4, repository-6]
+internal:
+  match: [repository-5]
+exclude: [github-access]   # kun platform-teamet, skrevet for hånd i access.yaml

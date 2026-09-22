@@ -1,0 +1,9 @@
+# Generert av audit.sh / plan.py / workflows. Lokale arbeidsfiler; i CI lastes de opp som artefakter.
+snapshots/
+latest.json
+report.html
+plan.json
+plan.txt
+result.txt
+verify.txt
+draft-hints.yaml

@@ -1,0 +1,64 @@
+# Ønsket tilgangstilstand for chrbang-org-sandbox. Fasit. Endres via PR; utføres med tools/apply.py.
+# Generert av tools/restructure.py fra snapshot 2026-09-22T101204Z (aktivitetsvindu 365 dager) og clients.yaml.
+# Modell: alle har read via base permission. Write kun via ett team per kunde (navn = fullt kundenavn) på kundens aktive repos, og internal-teamet på interne repos.
+# Sovende repos (ingen push i vinduet) har ingen write-grants. Direkte collaborators kun for eksterne.
+org: chrbang-org-sandbox
+base_permission: read
+owners:
+- chrbang
+
+teams:
+  developers:
+    description: Alle utviklere. Kun read (via base permission); write gis per kunde i kundeteam.
+    privacy: secret
+    members: []
+
+  kunde-a:
+    name: Kunde A
+    description: Kunde A
+    members:
+    - chrbang
+    repos:
+      write:
+      - repository-1
+      - repository-2
+
+  kunde-b:
+    name: Kunde B
+    description: Kunde B
+    members:
+    - chrbang
+    repos:
+      write:
+      - repository-3
+
+  kunde-c:
+    name: Kunde C
+    description: Kunde C
+    members:
+    - chrbang
+    repos:
+      write:
+      - repository-4
+      - repository-6
+
+  platform:
+    name: Platform
+    description: Eier tilgangsstyringen. Godkjenner og merger PR-er i github-access.
+    members:
+    - chrbang  # owner, implisitt maintainer
+    repos:
+      write:
+      - github-access
+
+  internal:
+    name: Internal
+    description: 'Interne repos: pakker, verktøy, eksperimenter.'
+    members: []
+    repos:
+      write:
+      - repository-5
+
+# Direkte collaborators: kun eksterne (outside collaborators). Ansatte får tilgang via team.
+repos: {}
+

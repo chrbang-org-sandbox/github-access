@@ -1,0 +1,48 @@
+# Sjekker en PR som endrer access.yaml: gyldig YAML, skjema i synk, og poster planen (hva apply vil gjøre) som kommentar.
+name: Sjekk access.yaml
+on:
+  pull_request:
+    paths: [access.yaml, clients.yaml, tools/**, audit.sh]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    environment: github-app
+    env: { ORG: "${{ github.repository_owner }}" }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with: { python-version: "3.12" }
+      - run: pip install --quiet pyyaml
+      - name: YAML og skjema
+        run: |
+          python3 -c "import yaml; yaml.safe_load(open('access.yaml')); yaml.safe_load(open('clients.yaml'))"
+          tools/gen-issue-form.py --check
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
+        id: app
+        with: { app-id: "${{ secrets.ACCESS_APP_ID }}", private-key: "${{ secrets.ACCESS_APP_PRIVATE_KEY }}", owner: "${{ github.repository_owner }}" }
+      - name: Snapshot og plan
+        env: { GH_TOKEN: "${{ steps.app.outputs.token }}" }
+        run: |
+          ./audit.sh
+          set +e; tools/plan.py > plan.txt; rc=$?; set -e
+          [ $rc -eq 0 ] || [ $rc -eq 2 ] || { cat plan.txt; exit $rc; }
+          echo "rc=$rc" >> "$GITHUB_ENV"
+      - name: Kommenter planen på PR-en
+        env: { GH_TOKEN: "${{ github.token }}", PR: "${{ github.event.pull_request.number }}" }
+        run: |
+          marker="<!-- access-plan -->"
+          body=$(printf '%s\n### Plan: dette skjer i GitHub ved merge\n\n```\n%s\n```\n' "$marker" "$(head -80 plan.txt)$( [ $(wc -l < plan.txt) -gt 80 ] && echo '… (forkortet)')")
+          id=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | startswith(\"$marker\")) | .id" | head -1)
+          if [ -n "$id" ]; then gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$id" -f body="$body" --silent
+          else gh pr comment "$PR" --body "$body"; fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: plan-pr-${{ github.event.pull_request.number }}
+          path: |
+            plan.txt
+            plan.json
+            report.html
+          retention-days: 30

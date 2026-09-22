@@ -1,0 +1,95 @@
+# Tilgangsforespørsel (issue-skjema) -> pull request mot access.yaml.
+# Kjører med et kortlevd GitHub App-token. Kan bare lage branch, PR og kommentar. Kan ikke endre tilgang.
+name: Tilgangsforespørsel → PR
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: access-request-${{ github.event.issue.number }}
+jobs:
+  pr:
+    if: contains(github.event.issue.labels.*.name, 'access-request')
+    runs-on: ubuntu-latest
+    environment: github-app
+    env:
+      ORG: ${{ github.repository_owner }}
+      ISSUE: ${{ github.event.issue.number }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with: { python-version: "3.12" }
+      - run: pip install --quiet pyyaml
+
+      - name: Les skjemaet
+        id: form
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_USER: ${{ github.event.issue.user.login }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os, re
+          body = os.environ["ISSUE_BODY"]
+          f = {m.group(1).strip(): m.group(2).strip() for m in re.finditer(r"### (.+?)\n+(.*?)(?=\n### |\Z)", body, re.S)}
+          def val(k): v = f.get(k, ""); return "" if v in ("_No response_", "None") else v
+          team = re.search(r"\(([^()]+)\)\s*$", val("Team")); team = team.group(1) if team else val("Team")
+          login = val("GitHub-brukernavn").lstrip("@") or os.environ["ISSUE_USER"]
+          if not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login): raise SystemExit(f"ugyldig brukernavn: {login!r}")
+          if not re.fullmatch(r"[a-z0-9-]+", team): raise SystemExit(f"ugyldig team: {team!r}")
+          print(f"action={'remove' if val('Hva').lower().startswith('fjern') else 'add'}")
+          print(f"team={team}"); print(f"login={login}"); print(f"role={val('Rolle') or 'member'}")
+          print("reason<<EOR"); print(val("Begrunnelse")); print("EOR")
+          PY
+
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
+        id: app
+        with:
+          app-id: ${{ secrets.ACCESS_APP_ID }}
+          private-key: ${{ secrets.ACCESS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+
+      - name: Sjekk at brukeren er medlem av orgen
+        env: { GH_TOKEN: "${{ steps.app.outputs.token }}", LOGIN: "${{ steps.form.outputs.login }}" }
+        run: |
+          if ! gh api "orgs/$ORG/members/$LOGIN" --silent 2>/dev/null; then
+            gh issue comment "$ISSUE" --body "❌ \`$LOGIN\` er ikke medlem av orgen \`$ORG\`. Personen må inviteres først. Ingen PR laget."
+            exit 1
+          fi
+
+      - name: Oppdater access.yaml
+        id: edit
+        env:
+          TEAM: ${{ steps.form.outputs.team }}
+          LOGIN: ${{ steps.form.outputs.login }}
+          ROLE: ${{ steps.form.outputs.role }}
+          ACTION: ${{ steps.form.outputs.action }}
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          set +e
+          summary=$(tools/request.py --team "$TEAM" --login "$LOGIN" --role "$ROLE" --action "$ACTION" 2>&1); rc=$?
+          set -e
+          if [ $rc -ne 0 ]; then gh issue comment "$ISSUE" --body "❌ Kunne ikke lage endring: $summary"; exit 1; fi
+          echo "summary=$summary" >> "$GITHUB_OUTPUT"
+
+      - name: Branch, commit og pull request
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SUMMARY: ${{ steps.edit.outputs.summary }}
+          REASON: ${{ steps.form.outputs.reason }}
+          TEAM: ${{ steps.form.outputs.team }}
+          LOGIN: ${{ steps.form.outputs.login }}
+          ISSUE_USER: ${{ github.event.issue.user.login }}
+          ISSUE_USER_ID: ${{ github.event.issue.user.id }}
+        run: |
+          git config user.name "github-access[bot]"
+          git config user.email "github-access[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          BR="request/${LOGIN}-${TEAM}-${ISSUE}"
+          git checkout -b "$BR"
+          git add access.yaml
+          git commit -m "$SUMMARY" -m "Closes #${ISSUE}" -m "Co-authored-by: ${ISSUE_USER} <${ISSUE_USER_ID}+${ISSUE_USER}@users.noreply.github.com>"
+          git push -u origin "$BR"
+          url=$(gh pr create --title "$SUMMARY" --label access-request --body "$(printf 'Forespørsel fra @%s i #%s.\n\n**Begrunnelse:** %s\n\nGodkjenn og merge, så oppdateres tilgangen automatisk (se FLYT.md). Sjekk «Plan»-kommentaren under før godkjenning.\n\nCloses #%s' "$ISSUE_USER" "$ISSUE" "$REASON" "$ISSUE")")
+          gh issue comment "$ISSUE" --body "Pull request laget: $url. Når den er godkjent og merget, oppdateres tilgangen automatisk."

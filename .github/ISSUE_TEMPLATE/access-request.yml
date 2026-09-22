@@ -1,0 +1,54 @@
+# Generert av tools/gen-issue-form.py fra access.yaml. Ikke rediger for hånd.
+name: Be om tilgang til et team
+description: Legg deg selv eller en kollega til i et team, eller fjern. Lager en pull request som platform-teamet godkjenner.
+title: 'Tilgang: '
+labels:
+- access-request
+body:
+- type: markdown
+  attributes:
+    value: Når du sender inn, lages en pull request mot `access.yaml` automatisk. Når den er godkjent og merget, oppdateres
+      tilgangen i GitHub av seg selv. Se FLYT.md for detaljer.
+- type: dropdown
+  id: action
+  attributes:
+    label: Hva
+    options:
+    - Legg til
+    - Fjern
+  validations:
+    required: true
+- type: dropdown
+  id: team
+  attributes:
+    label: Team
+    options:
+    - Internal (internal)
+    - Kunde A (kunde-a)
+    - Kunde B (kunde-b)
+    - Kunde C (kunde-c)
+    - Platform (platform)
+  validations:
+    required: true
+- type: dropdown
+  id: role
+  attributes:
+    label: Rolle
+    description: member = write på teamets repos. maintainer = det samme, pluss kan legge til/fjerne medlemmer (tech lead).
+    options:
+    - member
+    - maintainer
+    default: 0
+- type: input
+  id: login
+  attributes:
+    label: GitHub-brukernavn
+    description: La stå tomt for deg selv. Fyll inn for å be på vegne av en kollega.
+    placeholder: f.eks. octocat
+- type: textarea
+  id: reason
+  attributes:
+    label: Begrunnelse
+    description: Hvilket prosjekt, fra når, hvor lenge.
+  validations:
+    required: true
