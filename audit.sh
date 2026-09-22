@@ -118,7 +118,10 @@ jq -n \
   | {
       generated_at: $ts, org: $org, activity_since: $since, activity_days: $days,
       org_info: { base_permission: $base, two_factor_required: $oi.two_factor_requirement_enabled,
-                  members_can_create_repos: $oi.members_can_create_repositories, plan: ($oi.plan.name // null) },
+                  members_can_create_repos: $oi.members_can_create_repositories,
+                  members_can_create_public_repos: $oi.members_can_create_public_repositories,
+                  members_can_fork_private_repos: $oi.members_can_fork_private_repositories,
+                  plan: ($oi.plan.name // null) },
       members: $members, owners: $owners, outside: $outside,
       org_rulesets: $org_rulesets[0],
       teams: $T,

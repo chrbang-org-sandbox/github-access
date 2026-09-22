@@ -39,7 +39,7 @@ teams:
     name: Kunde A
     members: [tech-lead, utvikler-1]
     repos:
-      write: [repository-1, repository-2]
+      admin: [repository-1, repository-2]
       read: ["*"]              # "*" = alle repos i orgen, også nye
 repos:
   repository-3:
@@ -86,13 +86,41 @@ på PR-en (satt av en owner) eller `workflow_dispatch` med `allow_structural`.
 ## Modell
 
 - **Alle har read** via base permission.
-- **Write kun via team.** Ett team per kunde med aktivitet (push siste 365 dager), med write på kundens aktive repos. Teamet heter det fulle kundenavnet med stor forbokstav (`name: Kunde A`); nøkkelen i fila er slug-en GitHub lager av navnet (`kunde-a`). `internal`-teamet har write på interne repos.
+- **Admin kun via team.** Ett team per kunde med aktivitet (push siste 365 dager), med **admin** på kundens aktive repos. Admin, ikke write, fordi Actions-secrets, variabler og environments bare kan styres av repo-admins. Det admin ellers kunne misbrukt til sperres på org-nivå, se «Org-sperrer». Teamet heter det fulle kundenavnet med stor forbokstav (`name: Kunde A`); nøkkelen i fila er slug-en GitHub lager av navnet (`kunde-a`). `internal`-teamet har write på interne repos.
 - **Ingen team-maintainers.** Medlemskap endres via forespørselsflyten, ikke i GitHub-UI. Owners er implisitt maintainers i alle team. `maintainers:` kan settes for hånd i `access.yaml` for et team som trenger det.
-- **Sovende repos har ingen write-grants.** Trengs det, legges repoet inn i kundens team via PR.
+- **Sovende repos har ingen team-grants.** Trengs det, legges repoet inn i kundens team via PR.
 - **Direkte collaborators kun for eksterne** (kundens folk, integrasjonskontoer). Ansatte får alltid tilgang via team; `tools/plan.py` advarer om brudd.
 - `developers` er kun en liste over alle utviklere.
 
 `clients.yaml` er koblingen repo → kunde. Nye repos bør følge navnekonvensjonen `Kunde.Navn` så de matcher automatisk; `tools/plan.py` advarer om aktive repos uten team-write.
+
+## Org-sperrer som MÅ være på før kundeteam får admin
+
+Repo-admin kan slette repo, endre visibility, invitere collaborators og skru av repo-nivå branch protection.
+Disse innstillingene tar bort det som ikke lar seg begrense til egen kunde. Alle er org-nivå, under
+Org → Settings, og må sjekkes **før** `apply` av ny `access.yaml`:
+
+| Innstilling | Verdi | Hvor |
+|---|---|---|
+| Base permissions | **Read** | Member privileges |
+| Repository creation | kun **Private** (eller av) | Member privileges |
+| Repository forking | **av** | Member privileges |
+| Repository deletion and transfer | **av** («Members with admin permissions cannot delete or transfer») | Member privileges |
+| Repository visibility change | **av** | Member privileges |
+| Allow members to create teams | **av** | Member privileges |
+| Two-factor authentication | **Require** | Authentication security |
+| Org-ruleset på default branch, alle repos | PR + 1 godkjenning, blokker force push og sletting, tom bypass-liste | Repository → Rulesets |
+| Org-ruleset på tags `v*` | blokker oppdatering/sletting, kun via PR-flyt | Repository → Rulesets |
+| Actions: workflow permissions | **Read** som default | Actions → General |
+| Actions: fork pull request workflows | av (irrelevant når forking er av) | Actions → General |
+
+Org-rulesets er nøkkelen: repo-admins kan slette repoets egen branch protection, men **ikke** overstyre et org-ruleset.
+Det er derfor kundeteam kan ha admin uten at én konto kan pushe rett til main i egne repos.
+
+`audit.sh` registrerer base permission, 2FA, forking og public repo-opprettelse; rapporten viser dem i toppen.
+Sletting, visibility og team-opprettelse er ikke tilgjengelig via API og må sjekkes i UI.
+
+Etter at alt er satt: `./audit.sh` skal vise `fork av private: nei` og `public repo-opprettelse: nei` i rapporten.
 
 ## Omlegging fra «alle har write på alt»
 
