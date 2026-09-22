@@ -38,6 +38,7 @@ teams:
     description: Kunde C
     members:
     - chrbang
+    - pedarn
     repos:
       admin:
       - repository-4
