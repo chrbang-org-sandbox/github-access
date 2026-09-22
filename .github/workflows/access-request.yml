@@ -39,10 +39,18 @@ jobs:
           login = val("GitHub-brukernavn").lstrip("@") or os.environ["ISSUE_USER"]
           if not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login): raise SystemExit(f"ugyldig brukernavn: {login!r}")
           if not re.fullmatch(r"[a-z0-9-]+", team): raise SystemExit(f"ugyldig team: {team!r}")
-          print(f"action={'remove' if val('Hva').lower().startswith('fjern') else 'add'}")
-          print(f"team={team}"); print(f"login={login}"); print(f"role={val('Rolle') or 'member'}")
+          action = 'remove' if val('Hva').lower().startswith('fjern') else 'add'
+          role = val('Rolle') or 'member'
+          import yaml
+          tname = ((yaml.safe_load(open('access.yaml')).get('teams') or {}).get(team) or {}).get('name') or team
+          title = (f"Add {login} to {tname} team" + (" as maintainer" if role == "maintainer" else "")) if action == "add" else f"Remove {login} from {tname} team"
+          print(f"action={action}"); print(f"team={team}"); print(f"login={login}"); print(f"role={role}"); print(f"title={title}")
           print("reason<<EOR"); print(val("Begrunnelse")); print("EOR")
           PY
+
+      - name: Sett tittel på issuet ut fra valgene
+        env: { GH_TOKEN: "${{ github.token }}", TITLE: "${{ steps.form.outputs.title }}" }
+        run: gh issue edit "$ISSUE" --title "$TITLE"
 
       - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         id: app
@@ -78,6 +86,7 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           SUMMARY: ${{ steps.edit.outputs.summary }}
+          TITLE: ${{ steps.form.outputs.title }}
           REASON: ${{ steps.form.outputs.reason }}
           TEAM: ${{ steps.form.outputs.team }}
           LOGIN: ${{ steps.form.outputs.login }}
@@ -90,7 +99,7 @@ jobs:
           BR="request/${LOGIN}-${TEAM}-${ISSUE}"
           git checkout -b "$BR"
           git add access.yaml
-          git commit -m "$SUMMARY" -m "Closes #${ISSUE}" -m "Co-authored-by: ${ISSUE_USER} <${ISSUE_USER_ID}+${ISSUE_USER}@users.noreply.github.com>"
+          git commit -m "$TITLE" -m "$SUMMARY" -m "Closes #${ISSUE}" -m "Co-authored-by: ${ISSUE_USER} <${ISSUE_USER_ID}+${ISSUE_USER}@users.noreply.github.com>"
           git push -u origin "$BR"
-          url=$(gh pr create --title "$SUMMARY" --label access-request --body "$(printf 'Forespørsel fra @%s i #%s.\n\n**Begrunnelse:** %s\n\nGodkjenn og merge, så oppdateres tilgangen automatisk (se FLYT.md). Sjekk «Plan»-kommentaren under før godkjenning.\n\nCloses #%s' "$ISSUE_USER" "$ISSUE" "$REASON" "$ISSUE")")
+          url=$(gh pr create --title "$TITLE" --label access-request --body "$(printf 'Forespørsel fra @%s i #%s.\n\n**Begrunnelse:** %s\n\nGodkjenn og merge, så oppdateres tilgangen automatisk (se FLYT.md). Sjekk «Plan»-kommentaren under før godkjenning.\n\nCloses #%s' "$ISSUE_USER" "$ISSUE" "$REASON" "$ISSUE")")
           gh issue comment "$ISSUE" --body "Pull request laget: $url. Når den er godkjent og merget, oppdateres tilgangen automatisk."

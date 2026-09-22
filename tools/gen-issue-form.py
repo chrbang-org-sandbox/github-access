@@ -16,11 +16,12 @@ options = [f"{name} ({slug})" if name != slug else slug for name, slug in sorted
 form = {
     "name": "Be om tilgang til et team",
     "description": "Legg deg selv eller en kollega til i et team, eller fjern. Lager en pull request som platform-teamet godkjenner.",
-    "title": "Tilgang: ",
+    "title": "Tilgangsforespørsel",     # settes automatisk av workflowen ut fra valgene, f.eks. "Add octocat to Kunde A team"
     "labels": ["access-request"],
     "body": [
         {"type": "markdown", "attributes": {"value": "Når du sender inn, lages en pull request mot `access.yaml` automatisk. "
-            "Når den er godkjent og merget, oppdateres tilgangen i GitHub av seg selv. Se FLYT.md for detaljer."}},
+            "Når den er godkjent og merget, oppdateres tilgangen i GitHub av seg selv. Se FLYT.md for detaljer.\n\n"
+            "La tittelen stå. Den settes automatisk ut fra valgene under."}},
         {"type": "dropdown", "id": "action", "attributes": {"label": "Hva", "options": ["Legg til", "Fjern"]}, "validations": {"required": True}},
         {"type": "dropdown", "id": "team", "attributes": {"label": "Team", "options": options}, "validations": {"required": True}},
         {"type": "dropdown", "id": "role", "attributes": {"label": "Rolle", "description": "member = write på teamets repos. maintainer = det samme, pluss kan legge til/fjerne medlemmer (tech lead).",

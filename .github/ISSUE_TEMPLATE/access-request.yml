@@ -1,14 +1,17 @@
 # Generert av tools/gen-issue-form.py fra access.yaml. Ikke rediger for hånd.
 name: Be om tilgang til et team
 description: Legg deg selv eller en kollega til i et team, eller fjern. Lager en pull request som platform-teamet godkjenner.
-title: 'Tilgang: '
+title: Tilgangsforespørsel
 labels:
 - access-request
 body:
 - type: markdown
   attributes:
-    value: Når du sender inn, lages en pull request mot `access.yaml` automatisk. Når den er godkjent og merget, oppdateres
+    value: 'Når du sender inn, lages en pull request mot `access.yaml` automatisk. Når den er godkjent og merget, oppdateres
       tilgangen i GitHub av seg selv. Se FLYT.md for detaljer.
+
+
+      La tittelen stå. Den settes automatisk ut fra valgene under.'
 - type: dropdown
   id: action
   attributes:
