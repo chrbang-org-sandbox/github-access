@@ -57,7 +57,9 @@ teams:
   internal:
     name: Internal
     description: 'Interne repos: pakker, verktøy, eksperimenter.'
-    members: []
+    members:
+    - chrbang
+    - pedarn
     repos:
       admin:
       - repository-5
