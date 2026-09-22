@@ -29,6 +29,7 @@ teams:
     description: Kunde B
     members:
     - chrbang
+    - pedarn
     repos:
       write:
       - repository-3
