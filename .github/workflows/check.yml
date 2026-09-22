@@ -2,7 +2,7 @@
 name: Sjekk access.yaml
 on:
   pull_request:
-    paths: [access.yaml, clients.yaml, tools/**, audit.sh]
+    paths: [access.yaml, clients.yaml, tools/**, audit.sh, .github/ISSUE_TEMPLATE/**]
 permissions:
   contents: read
   pull-requests: write
@@ -20,6 +20,7 @@ jobs:
         run: |
           python3 -c "import yaml; yaml.safe_load(open('access.yaml')); yaml.safe_load(open('clients.yaml'))"
           tools/gen-issue-form.py --check
+          python3 tools/test_parse_issue.py
       - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         id: app
         with: { app-id: "${{ secrets.ACCESS_APP_ID }}", private-key: "${{ secrets.ACCESS_APP_PRIVATE_KEY }}", owner: "${{ github.repository_owner }}" }

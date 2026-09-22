@@ -1,0 +1,54 @@
+# Holder brukerlista i issue-skjemaet («Hvem») lik org-medlemskapet. Issue Forms kan ikke hente lista dynamisk,
+# så den bakes inn og oppdateres her: daglig, manuelt, og etter hver apply. Lager en PR bare når lista er endret.
+name: Oppdater brukerliste i skjemaet
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Utfør tilganger"]
+    types: [completed]
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: refresh-form
+  cancel-in-progress: true
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    environment: github-app
+    env: { ORG: "${{ github.repository_owner }}", BR: chore/refresh-user-list }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with: { python-version: "3.12" }
+      - run: pip install --quiet pyyaml
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
+        id: app
+        with: { app-id: "${{ secrets.ACCESS_APP_ID }}", private-key: "${{ secrets.ACCESS_APP_PRIVATE_KEY }}", owner: "${{ github.repository_owner }}" }
+
+      - name: Regenerer skjemaet med dagens org-medlemmer
+        id: gen
+        env: { GH_TOKEN: "${{ steps.app.outputs.token }}" }
+        run: |
+          tools/gen-issue-form.py --users
+          if git diff --quiet -- .github/ISSUE_TEMPLATE/access-request.yml; then echo "changed=false" >> "$GITHUB_OUTPUT"; echo "Brukerlista er uendret."
+          else echo "changed=true" >> "$GITHUB_OUTPUT"; git diff -- .github/ISSUE_TEMPLATE/access-request.yml; fi
+
+      - name: Pull request (oppdaterer eksisterende hvis den er åpen)
+        if: steps.gen.outputs.changed == 'true'
+        env: { GH_TOKEN: "${{ steps.app.outputs.token }}" }
+        run: |
+          git config user.name "github-access[bot]"
+          git config user.email "github-access[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git checkout -b "$BR"
+          git add .github/ISSUE_TEMPLATE/access-request.yml
+          git commit -m "chore(form): oppdater brukerlista fra org-medlemskap"
+          git push --force -u origin "$BR"
+          if [ -z "$(gh pr list --head "$BR" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --title "chore(form): oppdater brukerlista i issue-skjemaet" \
+              --body "Org-medlemskapet har endret seg. Lista i «Hvem»-feltet i tilgangsskjemaet er regenerert med \`tools/gen-issue-form.py --users\`. Ingen tilgang endres av denne PR-en."
+          fi
