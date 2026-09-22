@@ -33,15 +33,6 @@ body:
     - Platform (platform)
   validations:
     required: true
-- type: dropdown
-  id: role
-  attributes:
-    label: Rolle
-    description: member = write på teamets repos. maintainer = det samme, pluss kan legge til/fjerne medlemmer (tech lead).
-    options:
-    - member
-    - maintainer
-    default: 0
 - type: input
   id: login
   attributes:

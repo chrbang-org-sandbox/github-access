@@ -24,8 +24,6 @@ form = {
             "La tittelen stå. Den settes automatisk ut fra valgene under."}},
         {"type": "dropdown", "id": "action", "attributes": {"label": "Hva", "options": ["Legg til", "Fjern"]}, "validations": {"required": True}},
         {"type": "dropdown", "id": "team", "attributes": {"label": "Team", "options": options}, "validations": {"required": True}},
-        {"type": "dropdown", "id": "role", "attributes": {"label": "Rolle", "description": "member = write på teamets repos. maintainer = det samme, pluss kan legge til/fjerne medlemmer (tech lead).",
-            "options": ["member", "maintainer"], "default": 0}},
         {"type": "input", "id": "login", "attributes": {"label": "GitHub-brukernavn", "description": "La stå tomt for deg selv. Fyll inn for å be på vegne av en kollega.", "placeholder": "f.eks. octocat"}},
         {"type": "textarea", "id": "reason", "attributes": {"label": "Begrunnelse", "description": "Hvilket prosjekt, fra når, hvor lenge."}, "validations": {"required": True}},
     ],

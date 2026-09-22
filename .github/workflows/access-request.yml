@@ -40,10 +40,10 @@ jobs:
           if not re.fullmatch(r"[A-Za-z0-9-]{1,39}", login): raise SystemExit(f"ugyldig brukernavn: {login!r}")
           if not re.fullmatch(r"[a-z0-9-]+", team): raise SystemExit(f"ugyldig team: {team!r}")
           action = 'remove' if val('Hva').lower().startswith('fjern') else 'add'
-          role = val('Rolle') or 'member'
+          role = 'member'      # maintainer settes kun for hånd i access.yaml; owners er implisitt maintainers
           import yaml
           tname = ((yaml.safe_load(open('access.yaml')).get('teams') or {}).get(team) or {}).get('name') or team
-          title = (f"Add {login} to {tname} team" + (" as maintainer" if role == "maintainer" else "")) if action == "add" else f"Remove {login} from {tname} team"
+          title = f"Add {login} to {tname} team" if action == "add" else f"Remove {login} from {tname} team"
           print(f"action={action}"); print(f"team={team}"); print(f"login={login}"); print(f"role={role}"); print(f"title={title}")
           print("reason<<EOR"); print(val("Begrunnelse")); print("EOR")
           PY
