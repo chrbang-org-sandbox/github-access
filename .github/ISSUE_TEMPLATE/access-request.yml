@@ -46,12 +46,6 @@ body:
     - KennethHoff
     - pedarn
     default: 0
-- type: input
-  id: others
-  attributes:
-    label: Andre brukernavn
-    description: Kun for folk som ikke står i lista over, f.eks. nyinviterte. Kommaseparert.
-    placeholder: f.eks. octocat, monalisa
 - type: textarea
   id: reason
   attributes:
