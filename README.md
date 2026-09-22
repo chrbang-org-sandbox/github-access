@@ -72,7 +72,8 @@ på PR-en (satt av en owner) eller `workflow_dispatch` med `allow_structural`.
 2. **GitHub App** «github-access» på orgen. Rettigheter: Repository → Contents *write*, Pull requests *write*, Issues *write*,
    Administration *write*; Organization → Members *write*, Administration *write*. Installer på hele orgen.
    Legg App ID og privat nøkkel som secrets `ACCESS_APP_ID` og `ACCESS_APP_PRIVATE_KEY` i et **Environment** `github-app`.
-   Deployment branches: `main` og `request/*`.
+   Deployment branches: *No restriction*. `check.yml` kjører på PR-merge-refs, som en branch-policy ville avvist. Tillitsgrensen er
+   uansett write på repoet, som bare `platform` har.
 3. **Team `platform`** med write på repoet (står i `access.yaml`). Alle andre har read via base permission.
 4. **Ruleset på `main`**: krev PR, 1 godkjenning, godkjenning fra code owner, forkast godkjenning ved ny push,
    blokker force push. Tom bypass-liste.
