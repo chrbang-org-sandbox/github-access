@@ -79,7 +79,9 @@ på PR-en (satt av en owner) eller `workflow_dispatch` med `allow_structural`.
 5. Repo-innstillinger: Pull requests → «Allow auto-merge» *på*, hvis godkjenning skal være nok.
    («Allow GitHub Actions to create and approve pull requests» trengs ikke: PR-er lages med App-tokenet, ikke `GITHUB_TOKEN`.)
 6. Varsling: `/github subscribe <org>/github-access pulls issues` i en Slack-kanal, og Scheduled reminders på team `platform`.
-7. Kjør `tools/gen-issue-form.py` etter hver endring av team-lista, ellers feiler `check.yml`.
+7. Labels `access-request` og `godkjent-strukturendring` må finnes i repoet (issue-skjemaet setter ikke labels som mangler):
+   `gh label create access-request` og `gh label create godkjent-strukturendring`.
+8. Kjør `tools/gen-issue-form.py` etter hver endring av team-lista, ellers feiler `check.yml`.
 
 ## Modell
 
