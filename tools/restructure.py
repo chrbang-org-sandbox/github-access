@@ -47,14 +47,14 @@ for r in active:
         unmatched.append(r["name"])
 
 def team_from_repos(repos):
-    """members + suggested maintainer from commit activity on these repos"""
+    """members from commit activity on these repos. No maintainers: access changes go through the request flow,
+    and owners are implicit maintainers of every team."""
     commits = Counter()
     for r in repos:
         for c in r["committers"]:
             if is_employee(c["login"]):
                 commits[c["login"]] += c["commits"]
-    non_owner = [u for u, _ in commits.most_common() if u not in owners]
-    return sorted(commits), (non_owner[0] if non_owner else None), commits
+    return sorted(commits), commits
 
 def dump(obj, indent=0):
     text = yaml.safe_dump(obj, sort_keys=False, allow_unicode=True, width=120, default_flow_style=False)
@@ -93,15 +93,15 @@ for ckey in sorted(by_client):
     if slug in team_slugs:
         sys.exit(f"to kunder gir samme team-slug '{slug}': {team_slugs[slug]} og {ckey}")
     team_slugs[slug] = ckey
-    mem, maint, commits = team_from_repos(repos)
+    mem, commits = team_from_repos(repos)
     entry = {"name": name, "description": name}
     members_set, grants = set(mem), {r["name"]: "write" for r in repos}
     existing = act["teams"].get(slug)
-    maintainers = {maint} if maint else set()
+    maintainers = set()
     if existing:                                   # same slug already in GitHub: take it over; phase 1 never lowers anything it has
         merged.add(slug)
         members_set |= existing["members"]
-        maintainers |= existing["maintainers"]
+        maintainers |= existing["maintainers"]     # existing explicit maintainers are kept, none are proposed
         if args.phase == 1:
             for repo, role in existing["repos"].items():
                 if RANK.get(role, 0) > RANK.get(grants.get(repo, "none"), 0):
@@ -116,8 +116,6 @@ for ckey in sorted(by_client):
     text = dump({slug: entry}, 2)
     if existing:
         text = text.replace(f"  {slug}:\n", f"  {slug}:  # eksisterende team, overtatt som kundeteam\n", 1)
-    if maint:
-        text = text.replace(f"    - {maint}\n", f"    - {maint}  # TODO bekreft tech lead ({commits[maint]} commits)\n", 1)
     if not mem:
         text = text.replace("    members: []\n", "    members: []  # TODO ingen ansatte har committet i vinduet\n")
     out.append(text)

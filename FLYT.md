@@ -3,7 +3,7 @@
 ## Flyten i fem steg
 
 1. **Du ber om tilgang.** Åpne et issue i dette repoet med skjemaet «Be om tilgang til et team».
-   Velg team, rolle og skriv én linje om hvorfor. Du er logget inn med GitHub-brukeren din, så vi vet hvem du er.
+   Velg team og skriv én linje om hvorfor. Du er logget inn med GitHub-brukeren din, så vi vet hvem du er.
 
 2. **En pull request lages automatisk.** Et script legger navnet ditt inn i `access.yaml` og åpner en PR.
    Fila er lista over hvem som skal ha tilgang til hva. Du får en kommentar på issuet med lenke.
@@ -44,8 +44,8 @@ og hvem som godkjente det.
 
 ## Vanlige spørsmål
 
-**Jeg trenger tilgang nå.** Tech lead for kunden er «maintainer» i teamet og kan legge deg til direkte i GitHub.
-Da får du tilgang umiddelbart. Send likevel inn skjemaet, så fila blir riktig; ellers fjernes tilgangen ved neste opprydding.
+**Jeg trenger tilgang nå.** Send skjemaet og gi en i platform-teamet et hint. Fra godkjenning til tilgang tar det under to minutter.
+Tilgang gitt direkte i GitHub-UI utenom fila blir fjernet ved neste kjøring.
 
 **Jeg skal bytte prosjekt.** Send to forespørsler: «Fjern» fra det gamle teamet og «Legg til» i det nye.
 

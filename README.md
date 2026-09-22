@@ -37,8 +37,7 @@ owners: [chrbang, ...]         # org owners. Alle andre medlemmer blir "member".
 teams:
   kunde-a:
     name: Kunde A
-    maintainers: [tech-lead]   # kan selv legge til/fjerne medlemmer i GitHub-UI
-    members: [utvikler-1]
+    members: [tech-lead, utvikler-1]
     repos:
       write: [repository-1, repository-2]
       read: ["*"]              # "*" = alle repos i orgen, også nye
@@ -87,7 +86,8 @@ på PR-en (satt av en owner) eller `workflow_dispatch` med `allow_structural`.
 ## Modell
 
 - **Alle har read** via base permission.
-- **Write kun via team.** Ett team per kunde med aktivitet (push siste 365 dager), med write på kundens aktive repos. Teamet heter det fulle kundenavnet med stor forbokstav (`name: Kunde A`); nøkkelen i fila er slug-en GitHub lager av navnet (`kunde-a`). Tech lead er maintainer og kan selv legge til og fjerne folk. `internal`-teamet har write på interne repos.
+- **Write kun via team.** Ett team per kunde med aktivitet (push siste 365 dager), med write på kundens aktive repos. Teamet heter det fulle kundenavnet med stor forbokstav (`name: Kunde A`); nøkkelen i fila er slug-en GitHub lager av navnet (`kunde-a`). `internal`-teamet har write på interne repos.
+- **Ingen team-maintainers.** Medlemskap endres via forespørselsflyten, ikke i GitHub-UI. Owners er implisitt maintainers i alle team. `maintainers:` kan settes for hånd i `access.yaml` for et team som trenger det.
 - **Sovende repos har ingen write-grants.** Trengs det, legges repoet inn i kundens team via PR.
 - **Direkte collaborators kun for eksterne** (kundens folk, integrasjonskontoer). Ansatte får alltid tilgang via team; `tools/plan.py` advarer om brudd.
 - `developers` er kun en liste over alle utviklere.
@@ -97,7 +97,7 @@ på PR-en (satt av en owner) eller `workflow_dispatch` med `allow_structural`.
 ## Omlegging fra «alle har write på alt»
 
 1. `./audit.sh` (365 dagers vindu), `tools/draft-clients.py > clients.yaml`, rett fila for hånd.
-2. `tools/restructure.py > access.yaml`. Les gjennom, bekreft TODO-ene (tech leads), PR.
+2. `tools/restructure.py > access.yaml`. Les gjennom, PR.
 3. `tools/plan.py` skal kun vise `org`, `team+`, `member+`, `grant+`. `tools/apply.py`.
 4. `./audit.sh` → `report.html`: gap = 0, nye team under «Endringer». La det gå en uke; tech leads legger til de som mangler.\n   `clients.yaml` gjennomgås først: `name` skal være fullt kundenavn, det blir team-navnet i GitHub.
 5. **Fase 2**: fjern blokkene merket `FASE 2` i `access.yaml` (eller `tools/restructure.py --phase 2 > access.yaml`), PR, varsle utviklerne med dato. `tools/plan.py` viser nå `grant-`, `direct-`, `team-`. `tools/apply.py`.
