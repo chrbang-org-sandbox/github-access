@@ -46,6 +46,7 @@ teams:
     name: Platform
     description: Eier tilgangsstyringen. Godkjenner og merger PR-er i github-access.
     members:
+    - AdrianGrotter
     - chrbang  # owner, implisitt maintainer
     repos:
       write:
