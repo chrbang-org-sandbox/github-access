@@ -60,15 +60,23 @@ jobs:
           ACTION: ${{ steps.form.outputs.action }}
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
-          summary=""
+          summary=""; changed=0
           for l in $LOGINS; do
             set +e; line=$(tools/request.py --team "$TEAM" --login "$l" --action "$ACTION" 2>&1); rc=$?; set -e
-            if [ $rc -ne 0 ]; then gh issue comment "$ISSUE" --body "❌ Kunne ikke lage endring: $line"; exit 1; fi
+            if [ $rc -eq 0 ]; then changed=$((changed+1))
+            elif echo "$line" | grep -q "er allerede \|er ikke i "; then line="(hopper over) $line"   # allerede riktig, ikke en feil
+            else gh issue comment "$ISSUE" --body "❌ Kunne ikke lage endring: $line"; exit 1; fi
             summary="${summary}${line}"$'\n'
           done
+          if [ $changed -eq 0 ]; then
+            gh issue comment "$ISSUE" --body "$(printf 'Ingenting å endre, access.yaml er allerede slik:\n\n```\n%s\n```' "$summary")"
+            gh issue close "$ISSUE" --reason "not planned"; exit 0
+          fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
           { echo "summary<<EOS"; printf '%s' "$summary"; echo "EOS"; } >> "$GITHUB_OUTPUT"
 
       - name: Branch, commit og pull request
+        if: steps.edit.outputs.changed != ''
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
           SUMMARY: ${{ steps.edit.outputs.summary }}
@@ -86,5 +94,5 @@ jobs:
           git add access.yaml
           git commit -m "$TITLE" -m "$SUMMARY" -m "Closes #${ISSUE}" -m "Co-authored-by: ${ISSUE_USER} <${ISSUE_USER_ID}+${ISSUE_USER}@users.noreply.github.com>"
           git push -u origin "$BR"
-          url=$(gh pr create --title "$TITLE" --label access-request --body "$(printf 'Forespørsel fra @%s i #%s.\n\n```\n%s```\n\n**Begrunnelse:** %s\n\nGodkjenn og merge, så oppdateres tilgangen automatisk (se FLYT.md). Sjekk «Plan»-kommentaren under før godkjenning.\n\nCloses #%s' "$ISSUE_USER" "$ISSUE" "$SUMMARY" "$REASON" "$ISSUE")")
+          url=$(gh pr create --title "$TITLE" --label access-request --body "$(printf 'Forespørsel fra @%s i #%s.\n\n```\n%s\n```\n\n**Begrunnelse:** %s\n\nGodkjenn og merge, så oppdateres tilgangen automatisk (se FLYT.md). Sjekk «Plan»-kommentaren under før godkjenning.\n\nCloses #%s' "$ISSUE_USER" "$ISSUE" "$SUMMARY" "$REASON" "$ISSUE")")
           gh issue comment "$ISSUE" --body "Pull request laget: $url. Når den er godkjent og merget, oppdateres tilgangen automatisk."
