@@ -20,6 +20,10 @@ clients = yaml.safe_load(open(args.clients))
 members, owners, outside = set(snap["members"]), set(snap["owners"]), set(snap["outside"])
 is_employee = lambda u: u in members and "[bot]" not in u and not u.startswith("~")
 
+# Role a customer team gets on its repos. admin (not write) because Actions secrets/variables and environments
+# can only be managed by repo admins. Blast radius is limited by org settings and org rulesets, see README.
+TEAM_ROLE = "admin"
+
 def slugify(name):
     """GitHub-style team slug: lowercase ASCII, non-alphanumerics -> '-'. ø/æ/å/ö transliterated so the slug is stable."""
     s = name.lower().replace("ø", "o").replace("æ", "ae").replace("å", "a").replace("ö", "o").replace("ä", "a").replace("ü", "u")
@@ -63,8 +67,8 @@ def dump(obj, indent=0):
 out = []
 out.append(f"# Ønsket tilgangstilstand for {snap['org']}. Fasit. Endres via PR; utføres med tools/apply.py.")
 out.append(f"# Generert av tools/restructure.py fra snapshot {snap['generated_at']} (aktivitetsvindu {snap['activity_days']} dager) og clients.yaml.")
-out.append("# Modell: alle har read via base permission. Write kun via ett team per kunde (navn = fullt kundenavn) på kundens aktive repos, og internal-teamet på interne repos.")
-out.append("# Sovende repos (ingen push i vinduet) har ingen write-grants. Direkte collaborators kun for eksterne.")
+out.append("# Modell: alle har read via base permission. Admin kun via ett team per kunde (navn = fullt kundenavn) på kundens aktive repos, og internal-teamet på interne repos.")
+out.append("# Sovende repos (ingen push i vinduet) har ingen team-grants. Direkte collaborators kun for eksterne.")
 if unmatched:
     out.append("# TODO aktive repos uten kunde i clients.yaml (får ingen write): " + ", ".join(sorted(unmatched)))
 out.append(dump({"org": snap["org"], "base_permission": "read", "owners": sorted(owners)}))
@@ -95,7 +99,7 @@ for ckey in sorted(by_client):
     team_slugs[slug] = ckey
     mem, commits = team_from_repos(repos)
     entry = {"name": name, "description": name}
-    members_set, grants = set(mem), {r["name"]: "write" for r in repos}
+    members_set, grants = set(mem), {r["name"]: TEAM_ROLE for r in repos}
     existing = act["teams"].get(slug)
     maintainers = set()
     if existing:                                   # same slug already in GitHub: take it over; phase 1 never lowers anything it has
@@ -126,7 +130,7 @@ out.append(dump({"internal": {
     "name": "Internal",
     "description": "Interne repos: pakker, verktøy, eksperimenter.",
     "members": sorted(dev["members"]),
-    "repos": {"write": sorted(r["name"] for r in internal_repos)}}}, 2))
+    "repos": {TEAM_ROLE: sorted(r["name"] for r in internal_repos)}}}, 2))
 
 # legacy teams, verbatim, removed in phase 2
 legacy = sorted(s for s in act["teams"] if s != "developers" and s not in merged) if args.phase == 1 else []

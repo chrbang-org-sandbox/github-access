@@ -50,4 +50,5 @@ Tilgang gitt direkte i GitHub-UI utenom fila blir fjernet ved neste kjøring.
 **Jeg skal bytte prosjekt.** Send to forespørsler: «Fjern» fra det gamle teamet og «Legg til» i det nye.
 
 **Hvorfor kan jeg lese alle repos?** Alle utviklere har lesetilgang til alt, for å kunne lære av og gjenbruke kode.
-Det er skrivetilgang som styres per kunde.
+Det er skrive- og admin-tilgang som styres per kunde. Teamet ditt har admin på kundens repos, så du kan sette
+secrets og variabler selv. Sletting av repo og endring av synlighet er sperret på org-nivå.
