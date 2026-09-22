@@ -36,8 +36,10 @@ log "repos: $(jq length "$WORK/repos.json"), members: $(jq length "$WORK/members
 log "team members"
 : > "$WORK/teams.ndjson"
 for t in $(gh api "orgs/$ORG/teams" --paginate --jq '.[].slug' | sort); do
-  desc=$(gh api "orgs/$ORG/teams/$t" --jq '.description // ""')
-  tname=$(gh api "orgs/$ORG/teams/$t" --jq '.name')
+  # a team deleted between listing and fetching (concurrent apply) must not abort the snapshot
+  tj=$(gh api "orgs/$ORG/teams/$t" 2>/dev/null) || { log "team $t forsvant underveis, hopper over"; continue; }
+  desc=$(jq -r '.description // ""' <<<"$tj")
+  tname=$(jq -r '.name' <<<"$tj")
   m=$(gh api "orgs/$ORG/teams/$t/members" --paginate --jq '.[].login' | lines_to_json)
   mt=$(gh api "orgs/$ORG/teams/$t/members?role=maintainer" --paginate --jq '.[].login' | lines_to_json)
   priv=$(gh api "orgs/$ORG/teams/$t" --jq '.privacy')
