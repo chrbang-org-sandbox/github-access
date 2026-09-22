@@ -59,7 +59,7 @@ Team som ikke finnes i fila blir slettet av apply. Direkte collaborators som ikk
 
 | Workflow | Trigger | Gjør |
 |---|---|---|
-| `access-request.yml` | nytt issue med label `access-request` | leser skjemaet, kjører `tools/request.py`, lager branch og PR, kommenterer på issuet |
+| `access-request.yml` | nytt issue med label `access-request` | leser skjemaet, setter tittel («Add octocat to Kunde A team»), kjører `tools/request.py`, lager branch og PR, kommenterer på issuet |
 | `check.yml` | PR som endrer `access.yaml` m.m. | validerer YAML og skjema, tar snapshot, poster planen som PR-kommentar |
 | `apply.yml` | merge til `main` med endret `access.yaml` | snapshot → plan → `tools/apply.py --auto` → nytt snapshot → planen skal være tom. Kommenterer resultat på PR-en |
 
