@@ -41,7 +41,6 @@ body:
     multiple: true
     options:
     - Myself (the requester)
-    - Meg selv (den som sender inn)
     - AdrianGrotter
     - chrbang
     - KennethHoff
