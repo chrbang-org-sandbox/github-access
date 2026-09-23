@@ -9,7 +9,7 @@
 # must not be used as truth.)
 set -euo pipefail
 ORG="${ORG:-$(gh repo view --json owner --jq .owner.login 2>/dev/null)}"
-[ -n "$ORG" ] || { echo "Sett ORG=<github-org>" >&2; exit 1; }
+[ -n "$ORG" ] || { echo "Set ORG=<github-org>" >&2; exit 1; }
 DAYS="${DAYS:-365}"
 PAR="${PAR:-6}"
 cd "$(dirname "$0")"
@@ -37,7 +37,7 @@ log "team members"
 : > "$WORK/teams.ndjson"
 for t in $(gh api "orgs/$ORG/teams" --paginate --jq '.[].slug' | sort); do
   # a team deleted between listing and fetching (concurrent apply) must not abort the snapshot
-  tj=$(gh api "orgs/$ORG/teams/$t" 2>/dev/null) || { log "team $t forsvant underveis, hopper over"; continue; }
+  tj=$(gh api "orgs/$ORG/teams/$t" 2>/dev/null) || { log "team $t disappeared while reading, skipping"; continue; }
   desc=$(jq -r '.description // ""' <<<"$tj")
   tname=$(jq -r '.name' <<<"$tj")
   m=$(gh api "orgs/$ORG/teams/$t/members" --paginate --jq '.[].login' | lines_to_json)

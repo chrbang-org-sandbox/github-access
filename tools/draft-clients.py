@@ -51,12 +51,12 @@ for p, names in sorted(groups.items()):
 excluded = [n for n in active if n.lower() == "github-access"]
 clients = {p: c for p, c in clients.items() if not (len(c["match"]) == 1 and c["match"][0] in excluded)}
 doc = {"clients": clients, "internal": {"match": internal}, "exclude": excluded or ["github-access"]}
-print(f"# Repo -> kunde. Utkast generert fra snapshot {snap['generated_at']} ({len(active)} aktive repos, {len(groups)} prefikser).")
-print("# match = glob på reponavn, case-insensitive. Slå sammen prefikser som er samme kunde. Alt som ikke er kunde legges under internal.")
-print("# Aktive repos som ikke matcher noe gir advarsel i tools/plan.py.")
-print("# name = fullt kundenavn med stor forbokstav. Blir team-navn i GitHub; team-slug utledes (Kunde A -> kunde-a).")
+print(f"# Repo -> customer. Draft generated from snapshot {snap['generated_at']} ({len(active)} active repos, {len(groups)} prefixes).")
+print("# match = glob on repo name, case-insensitive. Merge prefixes that are the same customer. Everything that is not a customer goes under internal.")
+print("# Active repos that match nothing give a warning in tools/plan.py.")
+print("# name = full customer name, capitalised. Becomes the team name in GitHub; the team slug is derived (Kunde A -> kunde-a).")
 text = yaml.safe_dump(doc, sort_keys=False, allow_unicode=True, width=140)
 for p, c in clients.items():
     if p not in KNOWN_NAMES:
-        text = text.replace(f"    name: {c['name']}\n", f"    name: {c['name']}  # TODO fullt kundenavn\n", 1)
+        text = text.replace(f"    name: {c['name']}\n", f"    name: {c['name']}  # TODO full customer name\n", 1)
 print(text)

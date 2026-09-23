@@ -1,172 +1,173 @@
 # github-access
 
-Tilgangsstyring for en GitHub-org som kode. Én YAML-fil er fasit, et audit-script leser
-virkeligheten, og plan/apply utfører differansen.
+Access management for a GitHub org as code. One YAML file is the source of truth, an audit script reads
+reality, and plan/apply carries out the difference.
 
 ```
-./audit.sh                      # les faktisk tilstand -> snapshots/, latest.json, report.html
-tools/ui.py                     # web-grensesnitt for team-medlemskap -> endrer access.yaml
-tools/plan.py                   # diff access.yaml mot latest.json -> plan.json (exit 2 = endringer)
-tools/apply.py                  # utfør plan.json via gh api, med bekreftelse
-./audit.sh && tools/plan.py     # verifiser: planen skal være tom
-open report.html                # rapport med endringer siden forrige snapshot
+./audit.sh                      # read actual state -> snapshots/, latest.json, report.html
+tools/ui.py                     # web UI for team membership -> edits access.yaml
+tools/plan.py                   # diff access.yaml against latest.json -> plan.json (exit 2 = changes)
+tools/apply.py                  # carry out plan.json via gh api, with confirmation
+./audit.sh && tools/plan.py     # verify: the plan should be empty
+open report.html                # report with changes since the previous snapshot
 ```
 
-Krever `gh` innlogget som org owner med scope `repo`, `admin:org`, og `jq` + `python3` med PyYAML.
+Requires `gh` logged in as org owner with scopes `repo`, `admin:org`, plus `jq` and `python3` with PyYAML.
 
-## Filer
+## Files
 
-| Fil | Rolle |
+| File | Role |
 |---|---|
-| `access.yaml` | Ønsket tilstand: base permission, owners, team med medlemmer/maintainers/repo-grants, direkte collaborators. Endres kun via PR. |
-| `audit.sh` | Kun lesende. Snapshot av faktisk tilstand til `snapshots/<ts>.json` og `latest.json`, og genererer `report.html` (siste vs. forrige). Disse er ikke i git; i CI lagres de som workflow-artefakter. |
-| `tools/plan.py` | Diff ønsket vs. faktisk. Skriver `plan.json` med én gh-API-handling per endring. Additive handlinger først, fjerning sist. |
-| `tools/apply.py` | Utfører `plan.json`. Nekter hvis planen er basert på et eldre snapshot enn `latest.json`. `--only kind,kind` for delvis utførelse. |
-| `clients.yaml` | Repo → kunde, som glob på reponavn. Alt som ikke er kunde ligger under `internal`. |
-| `tools/draft-clients.py` | *Midlertidig, slettes etter fase 2.* Utkast til `clients.yaml` fra prefiksene i aktive repos. Skriver hele fila på nytt. |
-| `tools/restructure.py` | *Midlertidig, slettes etter fase 2.* Lager `access.yaml` etter modellen under: ett team per aktiv kunde. `--phase 1` (default) er additiv, `--phase 2` fjerner legacy. Overskriver manuelle rettelser. |
-| `tools/ui.py` | Lokalt web-grensesnitt (127.0.0.1:8787) for å se en persons team og roller, og legge til/fjerne medlemmer. Skriver kun `access.yaml`; commit og PR gjøres etterpå. |
-| `tools/gen-issue-form.py` | Genererer issue-skjemaet: team fra `access.yaml`, brukere fra org-medlemskapet (`--users`). `--check` sjekker bare team-lista. |
-| `tools/parse-issue.py` | Leser et innsendt skjema til handling, team og brukerliste. Brukes av `access-request.yml`; tester i `tools/test_parse_issue.py`. |
-| `report.template.html` | Mal for rapporten. |
+| `access.yaml` | Desired state: base permission, owners, teams with members/maintainers/repo grants, direct collaborators. Changed only via PR. |
+| `audit.sh` | Read-only. Snapshots actual state to `snapshots/<ts>.json` and `latest.json`, and generates `report.html` (latest vs. previous). These are not in git; in CI they are stored as workflow artifacts. |
+| `tools/plan.py` | Diff desired vs. actual. Writes `plan.json` with one gh API action per change. Additive actions first, removals last. |
+| `tools/apply.py` | Carries out `plan.json`. Refuses if the plan is based on an older snapshot than `latest.json`. `--only kind,kind` for partial execution. |
+| `clients.yaml` | Repo → customer, as globs on repo names. Everything that is not a customer goes under `internal`. |
+| `tools/draft-clients.py` | *Temporary, deleted after phase 2.* Drafts `clients.yaml` from the prefixes of active repos. Rewrites the whole file. |
+| `tools/restructure.py` | *Temporary, deleted after phase 2.* Builds `access.yaml` following the model below: one team per active customer. `--phase 1` (default) is additive, `--phase 2` removes legacy. Overwrites manual fixes. |
+| `tools/ui.py` | Local web UI (127.0.0.1:8787) to see a person's teams and roles, and add/remove members. Writes only `access.yaml`; commit and PR are done afterwards. |
+| `tools/gen-issue-form.py` | Generates the issue form: teams from `access.yaml`, users from the org membership (`--users`). `--check` only checks the team list. |
+| `tools/parse-issue.py` | Reads a submitted form into action, team and user list. Used by `access-request.yml`; tests in `tools/test_parse_issue.py`. |
+| `report.template.html` | Template for the report. |
 
 ## access.yaml
 
 ```yaml
 org: <org>
 base_permission: none          # none | read | write
-owners: [chrbang, ...]         # org owners. Alle andre medlemmer blir "member".
+owners: [chrbang, ...]         # org owners. Everyone else becomes "member".
 teams:
   kunde-a:
     name: Kunde A
     members: [tech-lead, utvikler-1]
     repos:
       admin: [repository-1, repository-2]
-      read: ["*"]              # "*" = alle repos i orgen, også nye
+      read: ["*"]              # "*" = all repos in the org, including new ones
 repos:
   repository-3:
-    collaborators:             # direkte grants, typisk eksterne
+    collaborators:             # direct grants, typically external people
       ekstern-konsulent: read
 ```
 
-Org owners er implisitt maintainers i alle team og tas ikke med under `maintainers`.
-Team som ikke finnes i fila blir slettet av apply. Direkte collaborators som ikke finnes i fila blir fjernet.
+Org owners are implicitly maintainers in every team and are not listed under `maintainers`.
+Teams not present in the file are deleted by apply. Direct collaborators not present in the file are removed.
 
-## For utviklere: be om tilgang
+## For developers: requesting access
 
-Åpne et issue med skjemaet «Be om tilgang til et team». Resten skjer automatisk. Les [FLYT.md](FLYT.md).
+Open an issue with the form "Request team access". The rest happens automatically. Read [FLOW.md](FLOW.md).
 
-## Automatikk (GitHub Actions)
+## Automation (GitHub Actions)
 
-| Workflow | Trigger | Gjør |
+| Workflow | Trigger | Does |
 |---|---|---|
-| `access-request.yml` | nytt issue med label `access-request` | leser skjemaet med `tools/parse-issue.py` (én eller flere brukere), setter tittel («Add octocat to Kunde A team»), kjører `tools/request.py` per bruker, lager branch og PR, kommenterer på issuet |
-| `refresh-form.yml` | daglig, manuelt, og etter `apply.yml` | regenererer brukerlista («Hvem») i issue-skjemaet fra org-medlemskapet og åpner en PR hvis den er endret |
-| `check.yml` | PR som endrer `access.yaml` m.m. | validerer YAML og skjema, tar snapshot, poster planen som PR-kommentar |
-| `apply.yml` | merge til `main` med endret `access.yaml` | snapshot → plan → `tools/apply.py --auto` → nytt snapshot → planen skal være tom. Kommenterer resultat på PR-en |
+| `access-request.yml` | new issue with label `access-request` | reads the form with `tools/parse-issue.py` (one or more users), sets the title ("Add octocat to Kunde A team"), runs `tools/request.py` per user, creates a branch and PR, comments on the issue |
+| `refresh-form.yml` | daily, manually, and after `apply.yml` | regenerates the user list ("Who") in the issue form from the org membership and opens a PR if it changed |
+| `check.yml` | PR that changes `access.yaml` etc. | validates YAML and form, takes a snapshot, posts the plan as a PR comment |
+| `apply.yml` | merge to `main` with changed `access.yaml` | snapshot → plan → `tools/apply.py --auto` → new snapshot → the plan should be empty. Comments the result on the PR |
 
-`apply.py --auto` stopper på `owner+`, `owner-`, `org` og `team-`. Slike endringer krever label `godkjent-strukturendring`
-på PR-en (satt av en owner) eller `workflow_dispatch` med `allow_structural`.
+`apply.py --auto` stops on `owner+`, `owner-`, `org` and `team-`. Such changes require the label `approved-structural-change`
+on the PR (set by an owner) or `workflow_dispatch` with `allow_structural`.
 
-### Oppsett som må gjøres i GitHub (én gang)
+### One-time setup in GitHub
 
-1. Push dette repoet som privat repo `<org>/github-access`. Ikke tillat forks.
-2. **GitHub App** «github-access» på orgen. Rettigheter: Repository → Contents *write*, Pull requests *write*, Issues *write*,
-   Administration *write*; Organization → Members *write*, Administration *write*. Installer på hele orgen.
-   Legg App ID og privat nøkkel som secrets `ACCESS_APP_ID` og `ACCESS_APP_PRIVATE_KEY` i et **Environment** `github-app`.
-   Deployment branches: *No restriction*. `check.yml` kjører på PR-merge-refs, som en branch-policy ville avvist. Tillitsgrensen er
-   uansett write på repoet, som bare `platform` har.
-3. **Team `platform`** med write på repoet (står i `access.yaml`). Alle andre har read via base permission.
-4. **Ruleset på `main`**: krev PR, 1 godkjenning, godkjenning fra code owner, forkast godkjenning ved ny push,
-   blokker force push. Tom bypass-liste.
-5. Repo-innstillinger: Pull requests → «Allow auto-merge» *på*, hvis godkjenning skal være nok.
-   («Allow GitHub Actions to create and approve pull requests» trengs ikke: PR-er lages med App-tokenet, ikke `GITHUB_TOKEN`.)
-6. Varsling: `/github subscribe <org>/github-access pulls issues` i en Slack-kanal, og Scheduled reminders på team `platform`.
-7. Labels `access-request` og `godkjent-strukturendring` må finnes i repoet (issue-skjemaet setter ikke labels som mangler):
-   `gh label create access-request` og `gh label create godkjent-strukturendring`.
-8. Kjør `tools/gen-issue-form.py` etter hver endring av team-lista, ellers feiler `check.yml`. Brukerlista i skjemaet
-   («Hvem», alle org-medlemmer) holdes oppdatert av `refresh-form.yml`; lokalt: `tools/gen-issue-form.py --users`.
+1. Push this repo as private repo `<org>/github-access`. Do not allow forks.
+2. **GitHub App** "github-access" on the org. Permissions: Repository → Contents *write*, Pull requests *write*, Issues *write*,
+   Administration *write*; Organization → Members *write*, Administration *write*. Install on the whole org.
+   Add App ID and private key as secrets `ACCESS_APP_ID` and `ACCESS_APP_PRIVATE_KEY` in an **Environment** `github-app`.
+   Deployment branches: *No restriction*. `check.yml` runs on PR merge refs, which a branch policy would reject. The trust boundary is
+   write on the repo either way, which only `platform` has.
+3. **Team `platform`** with write on the repo (defined in `access.yaml`). Everyone else has read via base permission.
+4. **Ruleset on `main`**: require PR, 1 approval, approval from code owner, dismiss approvals on new push,
+   block force push. Empty bypass list.
+5. Repo settings: Pull requests → "Allow auto-merge" *on*, if approval alone should be enough.
+   ("Allow GitHub Actions to create and approve pull requests" is not needed: PRs are created with the App token, not `GITHUB_TOKEN`.)
+6. Notifications: `/github subscribe <org>/github-access pulls issues` in a Slack channel, and Scheduled reminders on team `platform`.
+7. Labels `access-request` and `approved-structural-change` must exist in the repo (the issue form does not set labels that are missing):
+   `gh label create access-request` and `gh label create approved-structural-change`.
+8. Run `tools/gen-issue-form.py` after every change to the team list, otherwise `check.yml` fails. The user list in the form
+   ("Who", all org members) is kept up to date by `refresh-form.yml`; locally: `tools/gen-issue-form.py --users`.
 
-## Modell
+## Model
 
-- **Alle har read** via base permission.
-- **Admin kun via team.** Ett team per kunde med aktivitet (push siste 365 dager), med **admin** på kundens aktive repos. Admin, ikke write, fordi Actions-secrets, variabler og environments bare kan styres av repo-admins. Det admin ellers kunne misbrukt til sperres på org-nivå, se «Org-sperrer». Teamet heter det fulle kundenavnet med stor forbokstav (`name: Kunde A`); nøkkelen i fila er slug-en GitHub lager av navnet (`kunde-a`). `internal`-teamet har write på interne repos.
-- **Ingen team-maintainers.** Medlemskap endres via forespørselsflyten, ikke i GitHub-UI. Owners er implisitt maintainers i alle team. `maintainers:` kan settes for hånd i `access.yaml` for et team som trenger det.
-- **Sovende repos har ingen team-grants.** Trengs det, legges repoet inn i kundens team via PR.
-- **Direkte collaborators kun for eksterne** (kundens folk, integrasjonskontoer). Ansatte får alltid tilgang via team; `tools/plan.py` advarer om brudd.
-- `developers` er kun en liste over alle utviklere.
+- **Everyone has read** via base permission.
+- **Admin only via teams.** One team per customer with activity (push in the last 365 days), with **admin** on the customer's active repos. Admin, not write, because Actions secrets, variables and environments can only be managed by repo admins. What admin could otherwise be abused for is blocked at org level, see "Org-level guardrails". The team is named after the full customer name, capitalised (`name: Kunde A`); the key in the file is the slug GitHub derives from the name (`kunde-a`). The `internal` team has write on internal repos.
+- **No team maintainers.** Membership is changed through the request flow, not in the GitHub UI. Owners are implicitly maintainers in every team. `maintainers:` can be set by hand in `access.yaml` for a team that needs it.
+- **Dormant repos have no team grants.** If needed, the repo is added to the customer's team via PR.
+- **Direct collaborators only for external people** (the customer's staff, integration accounts). Employees always get access via teams; `tools/plan.py` warns about violations.
+- `developers` is just a list of all developers.
 
-`clients.yaml` er koblingen repo → kunde. Nye repos bør følge navnekonvensjonen `Kunde.Navn` så de matcher automatisk; `tools/plan.py` advarer om aktive repos uten team-write.
+`clients.yaml` is the mapping repo → customer. New repos should follow the naming convention `Customer.Name` so they match automatically; `tools/plan.py` warns about active repos without team write.
 
-## Org-sperrer som MÅ være på før kundeteam får admin
+## Org-level guardrails that MUST be on before customer teams get admin
 
-Repo-admin kan slette repo, endre visibility, invitere collaborators og skru av repo-nivå branch protection.
-Disse innstillingene tar bort det som ikke lar seg begrense til egen kunde. Alle er org-nivå, under
-Org → Settings, og må sjekkes **før** `apply` av ny `access.yaml`:
+A repo admin can delete the repo, change visibility, invite collaborators and turn off repo-level branch protection.
+These settings take away what cannot be confined to the admin's own customer. All are org level, under
+Org → Settings, and must be checked **before** `apply` of a new `access.yaml`:
 
-| Innstilling | Verdi | Hvor |
+| Setting | Value | Where |
 |---|---|---|
 | Base permissions | **Read** | Member privileges |
-| Repository creation | kun **Private** (eller av) | Member privileges |
-| Repository forking | **av** | Member privileges |
-| Repository deletion and transfer | **av** («Members with admin permissions cannot delete or transfer») | Member privileges |
-| Repository visibility change | **av** | Member privileges |
-| Allow members to create teams | **av** | Member privileges |
+| Repository creation | **Private** only (or off) | Member privileges |
+| Repository forking | **off** | Member privileges |
+| Repository deletion and transfer | **off** ("Members with admin permissions cannot delete or transfer") | Member privileges |
+| Repository visibility change | **off** | Member privileges |
+| Allow members to create teams | **off** | Member privileges |
 | Two-factor authentication | **Require** | Authentication security |
-| Org-ruleset på default branch, alle repos | PR + 1 godkjenning, blokker force push og sletting, tom bypass-liste | Repository → Rulesets |
-| Org-ruleset på tags `v*` | blokker oppdatering/sletting, kun via PR-flyt | Repository → Rulesets |
-| Actions: workflow permissions | **Read** som default | Actions → General |
-| Actions: fork pull request workflows | av (irrelevant når forking er av) | Actions → General |
+| Org ruleset on default branch, all repos | PR + 1 approval, block force push and deletion, empty bypass list | Repository → Rulesets |
+| Org ruleset on tags `v*` | block update/deletion, only via PR flow | Repository → Rulesets |
+| Actions: workflow permissions | **Read** as default | Actions → General |
+| Actions: fork pull request workflows | off (irrelevant when forking is off) | Actions → General |
 
-Org-rulesets er nøkkelen: repo-admins kan slette repoets egen branch protection, men **ikke** overstyre et org-ruleset.
-Det er derfor kundeteam kan ha admin uten at én konto kan pushe rett til main i egne repos.
+Org rulesets are the key: repo admins can delete the repo's own branch protection, but **not** override an org ruleset.
+That is why customer teams can have admin without any single account being able to push straight to main in their own repos.
 
-`audit.sh` registrerer base permission, 2FA, forking og public repo-opprettelse; rapporten viser dem i toppen.
-Sletting, visibility og team-opprettelse er ikke tilgjengelig via API og må sjekkes i UI.
+`audit.sh` records base permission, 2FA, forking and public repo creation; the report shows them at the top.
+Deletion, visibility and team creation are not available via the API and must be checked in the UI.
 
-Etter at alt er satt: `./audit.sh` skal vise `fork av private: nei` og `public repo-opprettelse: nei` i rapporten.
+Once everything is set: `./audit.sh` should show `fork of private: no` and `public repo creation: no` in the report.
 
-## Omlegging fra «alle har write på alt»
+## Migration from "everyone has write on everything"
 
-1. `./audit.sh` (365 dagers vindu), `tools/draft-clients.py > clients.yaml`, rett fila for hånd.
-2. `tools/restructure.py > access.yaml`. Les gjennom, PR.
-3. `tools/plan.py` skal kun vise `org`, `team+`, `member+`, `grant+`. `tools/apply.py`.
-4. `./audit.sh` → `report.html`: gap = 0, nye team under «Endringer». La det gå en uke; tech leads legger til de som mangler.\n   `clients.yaml` gjennomgås først: `name` skal være fullt kundenavn, det blir team-navnet i GitHub.
-5. **Fase 2**: fjern blokkene merket `FASE 2` i `access.yaml` (eller `tools/restructure.py --phase 2 > access.yaml`), PR, varsle utviklerne med dato. `tools/plan.py` viser nå `grant-`, `direct-`, `team-`. `tools/apply.py`.
-6. `./audit.sh && tools/plan.py` → «Ingen endringer», gap = 0.
+1. `./audit.sh` (365-day window), `tools/draft-clients.py > clients.yaml`, fix the file by hand.
+2. `tools/restructure.py > access.yaml`. Read through, PR.
+3. `tools/plan.py` should only show `org`, `team+`, `member+`, `grant+`. `tools/apply.py`.
+4. `./audit.sh` → `report.html`: gap = 0, new teams under "Changes". Let it run for a week; tech leads add those who are missing.
+   `clients.yaml` is reviewed first: `name` must be the full customer name, it becomes the team name in GitHub.
+5. **Phase 2**: remove the blocks marked `PHASE 2` in `access.yaml` (or `tools/restructure.py --phase 2 > access.yaml`), PR, notify the developers with a date. `tools/plan.py` now shows `grant-`, `direct-`, `team-`. `tools/apply.py`.
+6. `./audit.sh && tools/plan.py` → "No changes", gap = 0.
 
-Owners-nedgradering er et eget steg etter dette.
+Downgrading owners is a separate step after this.
 
-## Flyt for en endring
+## Flow for a change
 
-1. Branch, endre `access.yaml`, PR. En i platform-teamet godkjenner. Redigér for hånd eller med `tools/ui.py`,
-   som viser team per person og lar deg legge til, fjerne og bytte rolle. Den redigerer bare medlemslistene, så
-   kommentarer i fila bevares, og viser `git diff` med kommandoene for branch og PR.
-2. Owner kjører `./audit.sh` (ferskt snapshot), `tools/plan.py`, leser planen, `tools/apply.py`.
-3. `./audit.sh && tools/plan.py` skal nå si «Ingen endringer».
+1. Branch, edit `access.yaml`, PR. Someone in the platform team approves. Edit by hand or with `tools/ui.py`,
+   which shows teams per person and lets you add, remove and change role. It only edits the member lists, so
+   comments in the file are preserved, and it shows `git diff` with the commands for branch and PR.
+2. An owner runs `./audit.sh` (fresh snapshot), `tools/plan.py`, reads the plan, `tools/apply.py`.
+3. `./audit.sh && tools/plan.py` should now say "No changes".
 
-Tilgang gitt direkte i GitHub-UI vises som drift: `tools/plan.py` vil foreslå å fjerne den.
-Ta den inn i fila via PR hvis den skal beholdes.
+Access granted directly in the GitHub UI shows up as drift: `tools/plan.py` will propose removing it.
+Bring it into the file via PR if it should be kept.
 
-## Sikkerhet
+## Security
 
-Fila gjør ingenting selv. Endring krever merge i dette repoet **og** at en owner kjører apply
-med egen innlogging. Repoet skal ha ruleset på main (PR + én godkjenning, ingen bypass) og write
-kun for platform-teamet.
+The file does nothing by itself. A change requires a merge in this repo **and** an owner running apply
+with their own login. The repo should have a ruleset on main (PR + one approval, no bypass) and write
+only for the platform team.
 
-## Datakilder i audit
+## Data sources in audit
 
-| Data | Endepunkt |
+| Data | Endpoint |
 |---|---|
-| Effektiv tilgang per person per repo | `GET /repos/{org}/{repo}/collaborators` (alle affiliations, GitHubs egen utregning) |
-| Direkte grants | samme med `?affiliation=direct` |
-| Team-grants per repo | `GET /repos/{org}/{repo}/teams` |
-| Team-medlemmer og maintainers | `GET /orgs/{org}/teams/{slug}/members[?role=maintainer]` |
-| Branch protection, repo-rulesets, committere | per aktivt repo (push siste 365 dager) |
-| Org-rulesets | `GET /orgs/{org}/rulesets` + detaljer |
+| Effective access per person per repo | `GET /repos/{org}/{repo}/collaborators` (all affiliations, GitHub's own computation) |
+| Direct grants | same with `?affiliation=direct` |
+| Team grants per repo | `GET /repos/{org}/{repo}/teams` |
+| Team members and maintainers | `GET /orgs/{org}/teams/{slug}/members[?role=maintainer]` |
+| Branch protection, repo rulesets, committers | per active repo (push in the last 365 days) |
+| Org rulesets | `GET /orgs/{org}/rulesets` + details |
 
-Ikke bruk `GET /orgs/{org}/teams/{slug}/repos` som fasit: den returnerte 176 av 370 repos for et
-team som faktisk hadde tilgang til alle.
+Do not use `GET /orgs/{org}/teams/{slug}/repos` as the source of truth: it returned 176 of 370 repos for a
+team that actually had access to all of them.
 
-«Gap» i rapporten = person som har committet til et aktivt repo i vinduet men har lavere enn write
-i dag. Skal være tom gjennom hele migreringen.
+"Gap" in the report = a person who has committed to an active repo within the window but has less than write
+today. Should be empty throughout the migration.

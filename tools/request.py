@@ -9,8 +9,8 @@ from common import ROOT
 from ui import edit_team
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--team", required=True, help="team-nøkkel i access.yaml (slug)")
-ap.add_argument("--login", required=True, help="GitHub-brukernavn")
+ap.add_argument("--team", required=True, help="team key in access.yaml (slug)")
+ap.add_argument("--login", required=True, help="GitHub username")
 ap.add_argument("--role", choices=["member", "maintainer"], default="member")
 ap.add_argument("--action", choices=["add", "remove"], default="add")
 a = ap.parse_args()
@@ -20,7 +20,7 @@ text = open(path, encoding="utf-8").read()
 cfg = yaml.safe_load(text)
 team = (cfg.get("teams") or {}).get(a.team)
 if team is None:
-    sys.exit(f"team '{a.team}' finnes ikke i access.yaml")
+    sys.exit(f"team '{a.team}' does not exist in access.yaml")
 name = team.get("name") or a.team
 try:
     if a.action == "add":
@@ -29,15 +29,15 @@ try:
             # already there: treat as role change if role differs, otherwise nothing to do
             current = "maintainer" if a.login in (team.get("maintainers") or []) else "member"
             if current == a.role:
-                sys.exit(f"{a.login} er allerede {a.role} i {name}")
+                sys.exit(f"{a.login} is already {a.role} in {name}")
             new = edit_team(text, a.team, "role", a.login, a.role)
             summary = f"{name}: {a.login} {current} → {a.role}"
         else:
             new = edit_team(text, a.team, "add", a.login, a.role)
-            summary = f"{name}: legg til {a.login} ({a.role})"
+            summary = f"{name}: add {a.login} ({a.role})"
     else:
         new = edit_team(text, a.team, "remove", a.login)
-        summary = f"{name}: fjern {a.login}"
+        summary = f"{name}: remove {a.login}"
 except (KeyError, ValueError) as e:
     sys.exit(str(e))
 with open(path, "w", encoding="utf-8") as f:

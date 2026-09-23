@@ -26,7 +26,7 @@ def _team_block(lines, slug):
         elif start is not None and re.match(r"^  [^\s#-][^:]*:\s*$", l):
             return start, i
     if start is None:
-        raise KeyError(f"team {slug} finnes ikke i access.yaml")
+        raise KeyError(f"team {slug} does not exist in access.yaml")
     return start, len(lines)
 
 def _list_section(lines, start, end, key):
@@ -62,9 +62,9 @@ def edit_team(text, slug, op, login, role="member"):
         sections[key] = {"k": k, "j": j, "items": items}
     have = {u for s in sections.values() for u, _ in s["items"]}
     if op == "add" and login in have:
-        raise ValueError(f"{login} er allerede i {slug}")
+        raise ValueError(f"{login} is already in {slug}")
     if op in ("remove", "role") and login not in have:
-        raise ValueError(f"{login} er ikke i {slug}")
+        raise ValueError(f"{login} is not in {slug}")
     # remove everywhere, keep the trailing comment if any
     rest = ""
     for s in sections.values():
@@ -155,7 +155,7 @@ class H(BaseHTTPRequestHandler):
                 snap = load_snapshot()
                 known = set(snap["members"]) | set(snap["outside"])
                 if body.get("op") == "add" and body.get("login") not in known:
-                    raise ValueError(f"{body.get('login')} er ikke medlem av orgen (må inviteres først)")
+                    raise ValueError(f"{body.get('login')} is not a member of the org (must be invited first)")
                 text = open(ACCESS, encoding="utf-8").read()
                 new = edit_team(text, body["team"], body["op"], body["login"], body.get("role", "member"))
                 tmp = ACCESS + ".tmp"
@@ -165,7 +165,7 @@ class H(BaseHTTPRequestHandler):
         except (KeyError, ValueError) as e:
             self._json(400, {"error": str(e)})
 
-HTML = r"""<!doctype html><html lang="no"><head><meta charset="utf-8"><title>access.yaml · team</title>
+HTML = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>access.yaml · teams</title>
 <style>
 :root{--bg:#fafafa;--fg:#1a1a1a;--muted:#666;--line:#ddd;--card:#fff;--accent:#0a5;--bad:#c33;--warn:#b70}
 @media(prefers-color-scheme:dark){:root{--bg:#111;--fg:#eee;--muted:#999;--line:#333;--card:#1a1a1a}}
@@ -192,12 +192,12 @@ pre .add{color:var(--accent)} pre .del{color:var(--bad)} pre .hunk{color:var(--m
 details{margin-top:20px} summary{cursor:pointer;color:var(--muted)} .err{color:var(--bad);margin:8px 0}
 a{color:inherit}
 </style></head><body>
-<header><h1>access.yaml · team, medlemmer og repos</h1><span class="meta" id="meta"></span></header>
+<header><h1>access.yaml · teams, members and repos</h1><span class="meta" id="meta"></span></header>
 <main>
 <nav>
-  <div class="tabs"><button id="tab-p" class="primary">Personer</button><button id="tab-t">Team</button><button id="tab-r">Repos</button></div>
-  <input type="search" id="q" placeholder="søk…">
-  <label id="only-uncovered-wrap" hidden><input type="checkbox" id="only-uncovered"> kun repos uten team</label>
+  <div class="tabs"><button id="tab-p" class="primary">People</button><button id="tab-t">Teams</button><button id="tab-r">Repos</button></div>
+  <input type="search" id="q" placeholder="search…">
+  <label id="only-uncovered-wrap" hidden><input type="checkbox" id="only-uncovered"> only repos without a team</label>
   <ul id="list"></ul>
 </nav>
 <section id="view"></section>
@@ -208,85 +208,85 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const api=async(path,body)=>{const r=await fetch(path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});const j=await r.json();if(!r.ok)throw new Error(j.error||r.statusText);return j};
 const load=async()=>{S=await api('/api/state');render()};
 const people=()=>{const set=new Set([...S.snapshot.members,...S.snapshot.outside,...S.access.owners]);for(const t of Object.values(S.access.teams))[...t.members,...t.maintainers].forEach(u=>set.add(u));return [...set].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}))};
-const kind=u=>S.access.owners.includes(u)?'owner':S.snapshot.members.includes(u)?'member':S.snapshot.outside.includes(u)?'ekstern':'ikke i org';
+const kind=u=>S.access.owners.includes(u)?'owner':S.snapshot.members.includes(u)?'member':S.snapshot.outside.includes(u)?'external':'not in org';
 const repoTeams=r=>Object.entries(S.access.teams).flatMap(([s,t])=>Object.entries(t.repos).filter(([role,list])=>list.includes(r)).map(([role])=>({slug:s,name:t.name,role})));
 const wildcardTeams=()=>Object.entries(S.access.teams).flatMap(([s,t])=>Object.entries(t.repos).filter(([role,list])=>list.includes('*')).map(([role])=>({slug:s,name:t.name,role})));
 const repoInfo=r=>S.snapshot.repos.find(x=>x.name===r)||{name:r};
-const status=r=>r.archived?'arkivert':r.active?'aktiv':'stille';
+const status=r=>r.archived?'archived':r.active?'active':'quiet';
 const teamsOf=u=>Object.entries(S.access.teams).filter(([s,t])=>t.members.includes(u)||t.maintainers.includes(u)).map(([s,t])=>({slug:s,role:t.maintainers.includes(u)?'maintainer':'member',inGit:!!(S.snapshot.teams[s]&&S.snapshot.teams[s].members.includes(u))}));
 function render(){
-  document.getElementById('meta').textContent=`snapshot ${S.snapshot.generated_at.replace(/T(\d\d)(\d\d)\d\dZ/,' $1:$2')} · ${Object.keys(S.access.teams).length} team i fila · ${S.access.owners.length} owners`;
+  document.getElementById('meta').textContent=`snapshot ${S.snapshot.generated_at.replace(/T(\d\d)(\d\d)\d\dZ/,' $1:$2')} · ${Object.keys(S.access.teams).length} teams in the file · ${S.access.owners.length} owners`;
   for(const k of ['p','t','r']) document.getElementById('tab-'+k).className=tab===k?'primary':'';
   document.getElementById('only-uncovered-wrap').hidden=tab!=='r';
   let items;
-  if(tab==='p') items=people().filter(u=>u.toLowerCase().includes(q)).map(u=>({id:u,label:u,n:teamsOf(u).length+' team'}));
+  if(tab==='p') items=people().filter(u=>u.toLowerCase().includes(q)).map(u=>({id:u,label:u,n:teamsOf(u).length+' teams'}));
   else if(tab==='t') items=Object.keys(S.access.teams).sort((a,b)=>S.access.teams[a].name.localeCompare(S.access.teams[b].name)).filter(s=>(s+' '+S.access.teams[s].name).toLowerCase().includes(q))
-    .map(s=>({id:s,label:S.access.teams[s].name,sub:s!==S.access.teams[s].name?s:'',n:(S.access.teams[s].members.length+S.access.teams[s].maintainers.length)+' medl.'}));
+    .map(s=>({id:s,label:S.access.teams[s].name,sub:s!==S.access.teams[s].name?s:'',n:(S.access.teams[s].members.length+S.access.teams[s].maintainers.length)+' members'}));
   else items=S.snapshot.repos.filter(r=>r.name.toLowerCase().includes(q)).filter(r=>!onlyUncovered||repoTeams(r.name).length===0)
-    .map(r=>{const n=repoTeams(r.name).length;return {id:r.name,label:r.name,cls:n===0&&r.active?'bad':n===0?'muted':'',n:n===0?'ingen team':n+' team'}});
+    .map(r=>{const n=repoTeams(r.name).length;return {id:r.name,label:r.name,cls:n===0&&r.active?'bad':n===0?'muted':'',n:n===0?'no team':n+' teams'}});
   document.getElementById('list').innerHTML=items.map(i=>`<li class="${i.id===sel?'sel':''}" data-id="${esc(i.id)}"><span>${esc(i.label)}${i.sub?`<span class="sub">${esc(i.sub)}</span>`:''}</span><span class="n ${i.cls||''}">${i.n}</span></li>`).join('');
   document.querySelectorAll('#list li').forEach(li=>li.onclick=()=>{sel=li.dataset.id;render()});
   const v=document.getElementById('view');
-  if(!sel||(tab==='p'&&!people().includes(sel))||(tab==='t'&&!S.access.teams[sel])||(tab==='r'&&!S.snapshot.repos.some(r=>r.name===sel))){v.innerHTML=(tab==='r'?reposOverview():'<p class="muted">Velg en person eller et team til venstre.</p>')+diffPanel();return}
+  if(!sel||(tab==='p'&&!people().includes(sel))||(tab==='t'&&!S.access.teams[sel])||(tab==='r'&&!S.snapshot.repos.some(r=>r.name===sel))){v.innerHTML=(tab==='r'?reposOverview():'<p class="muted">Select a person or a team on the left.</p>')+diffPanel();return}
   v.innerHTML=(tab==='p'?personView(sel):tab==='t'?teamView(sel):repoView(sel))+diffPanel();
   wire();
 }
 function personView(u){
   const k=kind(u), ts=teamsOf(u), gitOnly=Object.entries(S.snapshot.teams).filter(([s,t])=>t.members.includes(u)&&!ts.some(x=>x.slug===s));
   return `<h2>${esc(u)} <span class="tag ${k==='owner'?'owner':''}">${k}</span></h2>
-  <div class="sub">write+ på ${S.snapshot.write_all[u]||0} repos i GitHub i dag (${S.snapshot.write_active[u]||0} aktive)${k==='owner'?' · owner er implisitt maintainer i alle team':''}</div>
-  <table><thead><tr><th>Team</th><th>Rolle i fila</th><th>I GitHub i dag</th><th></th></tr></thead><tbody>
+  <div class="sub">write+ on ${S.snapshot.write_all[u]||0} repos in GitHub today (${S.snapshot.write_active[u]||0} active)${k==='owner'?' · owners are implicit maintainers of every team':''}</div>
+  <table><thead><tr><th>Team</th><th>Role in file</th><th>In GitHub today</th><th></th></tr></thead><tbody>
   ${ts.map(t=>`<tr><td><a href="#" data-team="${esc(t.slug)}">${esc(S.access.teams[t.slug].name)}</a> <span class="muted">${esc(t.slug!==S.access.teams[t.slug].name?t.slug:'')}</span></td>
-    <td><span class="tag ${t.role==='maintainer'?'maint':''}">${t.role}</span></td><td>${t.inGit?'<span class="ok">ja</span>':'<span class="muted">nei, kun i fila</span>'}</td>
+    <td><span class="tag ${t.role==='maintainer'?'maint':''}">${t.role}</span></td><td>${t.inGit?'<span class="ok">yes</span>':'<span class="muted">no, only in the file</span>'}</td>
     <td><button data-op="role" data-team="${esc(t.slug)}" data-login="${esc(u)}" data-role="${t.role==='maintainer'?'member':'maintainer'}">→ ${t.role==='maintainer'?'member':'maintainer'}</button>
-        <button class="danger" data-op="remove" data-team="${esc(t.slug)}" data-login="${esc(u)}">fjern</button></td></tr>`).join('')||'<tr><td colspan="4" class="muted">ingen team i fila</td></tr>'}
-  ${gitOnly.map(([s])=>`<tr><td>${esc(s)}</td><td class="muted">–</td><td class="bad">ja, men ikke i fila (drift)</td><td></td></tr>`).join('')}
+        <button class="danger" data-op="remove" data-team="${esc(t.slug)}" data-login="${esc(u)}">remove</button></td></tr>`).join('')||'<tr><td colspan="4" class="muted">no teams in the file</td></tr>'}
+  ${gitOnly.map(([s])=>`<tr><td>${esc(s)}</td><td class="muted">–</td><td class="bad">yes, but not in the file (drift)</td><td></td></tr>`).join('')}
   </tbody></table>
   <div class="row"><select id="add-team">${Object.keys(S.access.teams).sort().filter(s=>!ts.some(t=>t.slug===s)).map(s=>`<option>${esc(s)}</option>`).join('')}</select>
   <select id="add-role"><option value="member">member</option><option value="maintainer">maintainer</option></select>
-  <button class="primary" id="add-btn" data-mode="person" data-login="${esc(u)}">legg til i team</button></div><div class="err" id="err"></div>`;
+  <button class="primary" id="add-btn" data-mode="person" data-login="${esc(u)}">add to team</button></div><div class="err" id="err"></div>`;
 }
 function teamView(s){
   const t=S.access.teams[s], g=S.snapshot.teams[s], rows=[...t.maintainers.map(u=>[u,'maintainer']),...t.members.map(u=>[u,'member'])];
   const gitOnly=g?g.members.filter(u=>!t.members.includes(u)&&!t.maintainers.includes(u)):[];
   const candidates=[...S.snapshot.members,...S.snapshot.outside].filter(u=>!t.members.includes(u)&&!t.maintainers.includes(u)).sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:'base'}));
-  const grants=Object.entries(t.repos).map(([role,list])=>list.includes('*')?`<div class="sub">${role} på <b>alle</b> repos (<code>*</code>, ${S.snapshot.repos.length} i dag)</div>`
-    :`<details><summary>${role} på ${list.length} repos</summary><ul class="repolist">${list.map(r=>{const i=repoInfo(r);return `<li><a href="#" data-repo="${esc(r)}">${esc(r)}</a> <span class="${i.active?'ok':'muted'}">${status(i)}</span></li>`}).join('')}</ul></details>`).join('');
-  return `<h2>${esc(t.name)} ${t.name!==s?`<span class="muted" style="font-size:13px">${esc(s)}</span>`:''}</h2><div class="sub">${esc(t.description)||'<i>ingen beskrivelse</i>'} · ${g?'finnes i GitHub':'<span class="bad">finnes ikke i GitHub ennå</span>'}</div>
-  ${grants||'<div class="sub muted">ingen repo-grants</div>'}
-  <table><thead><tr><th>Person</th><th>Type</th><th>Rolle i fila</th><th>I GitHub i dag</th><th></th></tr></thead><tbody>
+  const grants=Object.entries(t.repos).map(([role,list])=>list.includes('*')?`<div class="sub">${role} on <b>all</b> repos (<code>*</code>, ${S.snapshot.repos.length} today)</div>`
+    :`<details><summary>${role} on ${list.length} repos</summary><ul class="repolist">${list.map(r=>{const i=repoInfo(r);return `<li><a href="#" data-repo="${esc(r)}">${esc(r)}</a> <span class="${i.active?'ok':'muted'}">${status(i)}</span></li>`}).join('')}</ul></details>`).join('');
+  return `<h2>${esc(t.name)} ${t.name!==s?`<span class="muted" style="font-size:13px">${esc(s)}</span>`:''}</h2><div class="sub">${esc(t.description)||'<i>no description</i>'} · ${g?'exists in GitHub':'<span class="bad">does not exist in GitHub yet</span>'}</div>
+  ${grants||'<div class="sub muted">no repo grants</div>'}
+  <table><thead><tr><th>Person</th><th>Type</th><th>Role in file</th><th>In GitHub today</th><th></th></tr></thead><tbody>
   ${rows.map(([u,role])=>`<tr><td><a href="#" data-person="${esc(u)}">${esc(u)}</a></td><td><span class="tag ${kind(u)==='owner'?'owner':''}">${kind(u)}</span></td>
-    <td><span class="tag ${role==='maintainer'?'maint':''}">${role}</span></td><td>${g&&g.members.includes(u)?'<span class="ok">ja</span>':'<span class="muted">nei, kun i fila</span>'}</td>
+    <td><span class="tag ${role==='maintainer'?'maint':''}">${role}</span></td><td>${g&&g.members.includes(u)?'<span class="ok">yes</span>':'<span class="muted">no, only in the file</span>'}</td>
     <td><button data-op="role" data-team="${esc(s)}" data-login="${esc(u)}" data-role="${role==='maintainer'?'member':'maintainer'}">→ ${role==='maintainer'?'member':'maintainer'}</button>
-        <button class="danger" data-op="remove" data-team="${esc(s)}" data-login="${esc(u)}">fjern</button></td></tr>`).join('')||'<tr><td colspan="5" class="muted">ingen medlemmer</td></tr>'}
-  ${gitOnly.map(u=>`<tr><td>${esc(u)}</td><td>${kind(u)}</td><td class="muted">–</td><td class="bad">ja, men ikke i fila (drift)</td><td><button data-op="add" data-team="${esc(s)}" data-login="${esc(u)}" data-role="member">ta inn i fila</button></td></tr>`).join('')}
+        <button class="danger" data-op="remove" data-team="${esc(s)}" data-login="${esc(u)}">remove</button></td></tr>`).join('')||'<tr><td colspan="5" class="muted">no members</td></tr>'}
+  ${gitOnly.map(u=>`<tr><td>${esc(u)}</td><td>${kind(u)}</td><td class="muted">–</td><td class="bad">yes, but not in the file (drift)</td><td><button data-op="add" data-team="${esc(s)}" data-login="${esc(u)}" data-role="member">add to file</button></td></tr>`).join('')}
   </tbody></table>
   <div class="row"><select id="add-login">${candidates.map(u=>`<option>${esc(u)}</option>`).join('')}</select>
   <select id="add-role"><option value="member">member</option><option value="maintainer">maintainer</option></select>
-  <button class="primary" id="add-btn" data-mode="team" data-team="${esc(s)}">legg til</button></div><div class="err" id="err"></div>`;
+  <button class="primary" id="add-btn" data-mode="team" data-team="${esc(s)}">add</button></div><div class="err" id="err"></div>`;
 }
 function reposOverview(){
   const rs=S.snapshot.repos, unc=rs.filter(r=>!r.archived&&repoTeams(r.name).length===0), uncA=unc.filter(r=>r.active);
   const wc=wildcardTeams();
-  return `<h2>Repos</h2><div class="sub">${rs.length} repos · ${rs.filter(r=>r.active).length} aktive · <span class="${uncA.length?'bad':'ok'}">${uncA.length} aktive uten eget team</span> · ${unc.length-uncA.length} stille uten eget team (read via base permission)</div>
-  ${wc.length?`<div class="sub">Teller ikke som dekning: ${wc.map(t=>`<b>${esc(t.name)}</b> har ${t.role} på alle repos (<code>*</code>)`).join(', ')}. Fjernes i fase 2.</div>`:''}
-  <p class="muted">Velg et repo til venstre, eller huk av «kun repos uten team».</p>
-  ${uncA.length?`<table><thead><tr><th>Aktive repos uten team-grant</th><th>Direkte collaborators i fila</th></tr></thead><tbody>${uncA.map(r=>`<tr><td><a href="#" data-repo="${esc(r.name)}">${esc(r.name)}</a></td><td>${Object.entries(S.access.direct[r.name]||{}).map(([u,role])=>`<span class="tag">${esc(u)}: ${esc(role)}</span>`).join(' ')||'<span class="muted">–</span>'}</td></tr>`).join('')}</tbody></table>`:''}`;
+  return `<h2>Repos</h2><div class="sub">${rs.length} repos · ${rs.filter(r=>r.active).length} active · <span class="${uncA.length?'bad':'ok'}">${uncA.length} active without a team of their own</span> · ${unc.length-uncA.length} quiet without a team of their own (read via base permission)</div>
+  ${wc.length?`<div class="sub">Does not count as coverage: ${wc.map(t=>`<b>${esc(t.name)}</b> has ${t.role} on all repos (<code>*</code>)`).join(', ')}. Removed in phase 2.</div>`:''}
+  <p class="muted">Select a repo on the left, or tick "only repos without a team".</p>
+  ${uncA.length?`<table><thead><tr><th>Active repos without a team grant</th><th>Direct collaborators in the file</th></tr></thead><tbody>${uncA.map(r=>`<tr><td><a href="#" data-repo="${esc(r.name)}">${esc(r.name)}</a></td><td>${Object.entries(S.access.direct[r.name]||{}).map(([u,role])=>`<span class="tag">${esc(u)}: ${esc(role)}</span>`).join(' ')||'<span class="muted">–</span>'}</td></tr>`).join('')}</tbody></table>`:''}`;
 }
 function repoView(name){
   const i=repoInfo(name), ts=repoTeams(name), d=S.access.direct[name]||{};
-  return `<h2>${esc(name)} <span class="tag ${i.active?'':'muted'}">${status(i)}</span></h2><div class="sub">siste push ${esc((i.pushed_at||'').slice(0,10))}</div>
-  <table><thead><tr><th>Team</th><th>Rolle</th><th>Medlemmer</th></tr></thead><tbody>
-  ${ts.map(t=>`<tr><td><a href="#" data-team="${esc(t.slug)}">${esc(t.name)}</a></td><td><span class="tag">${esc(t.role)}</span></td><td class="muted">${[...S.access.teams[t.slug].maintainers,...S.access.teams[t.slug].members].map(esc).join(', ')||'ingen'}</td></tr>`).join('')||`<tr><td colspan="3" class="${i.active?'bad':'muted'}">ingen team har eget grant${i.active?' – aktivt repo uten write for noen utenom owners':' (stille repo, read via base permission)'}</td></tr>`}
-  ${wildcardTeams().map(t=>`<tr class="muted"><td><a href="#" data-team="${esc(t.slug)}">${esc(t.name)}</a> <span class="muted">via <code>*</code></span></td><td><span class="tag">${esc(t.role)}</span></td><td class="muted">${S.access.teams[t.slug].members.length+S.access.teams[t.slug].maintainers.length} medlemmer</td></tr>`).join('')}
+  return `<h2>${esc(name)} <span class="tag ${i.active?'':'muted'}">${status(i)}</span></h2><div class="sub">last push ${esc((i.pushed_at||'').slice(0,10))}</div>
+  <table><thead><tr><th>Team</th><th>Role</th><th>Members</th></tr></thead><tbody>
+  ${ts.map(t=>`<tr><td><a href="#" data-team="${esc(t.slug)}">${esc(t.name)}</a></td><td><span class="tag">${esc(t.role)}</span></td><td class="muted">${[...S.access.teams[t.slug].maintainers,...S.access.teams[t.slug].members].map(esc).join(', ')||'none'}</td></tr>`).join('')||`<tr><td colspan="3" class="${i.active?'bad':'muted'}">no team has a grant of its own${i.active?' – active repo without write for anyone except owners':' (quiet repo, read via base permission)'}</td></tr>`}
+  ${wildcardTeams().map(t=>`<tr class="muted"><td><a href="#" data-team="${esc(t.slug)}">${esc(t.name)}</a> <span class="muted">via <code>*</code></span></td><td><span class="tag">${esc(t.role)}</span></td><td class="muted">${S.access.teams[t.slug].members.length+S.access.teams[t.slug].maintainers.length} members</td></tr>`).join('')}
   </tbody></table>
-  ${Object.keys(d).length?`<h3 style="font-size:14px;margin:16px 0 4px">Direkte collaborators i fila</h3><div>${Object.entries(d).map(([u,role])=>`<span class="tag">${esc(u)}: ${esc(role)}</span>`).join(' ')}</div>`:''}
-  <p class="muted" style="margin-top:16px">Repo-grants endres foreløpig i <code>access.yaml</code> for hånd (teamets <code>repos:</code>-blokk).</p>`;
+  ${Object.keys(d).length?`<h3 style="font-size:14px;margin:16px 0 4px">Direct collaborators in the file</h3><div>${Object.entries(d).map(([u,role])=>`<span class="tag">${esc(u)}: ${esc(role)}</span>`).join(' ')}</div>`:''}
+  <p class="muted" style="margin-top:16px">Repo grants are for now edited by hand in <code>access.yaml</code> (the team's <code>repos:</code> block).</p>`;
 }
 function diffPanel(){
-  const d=S.diff.trim(); const lines=d?d.split('\n').map(l=>`<span class="${l.startsWith('+')&&!l.startsWith('+++')?'add':l.startsWith('-')&&!l.startsWith('---')?'del':l.startsWith('@@')?'hunk':''}">${esc(l)}</span>`).join('\n'):'<span class="muted">ingen endringer i access.yaml</span>';
-  return `<details ${d?'open':''}><summary>git diff access.yaml ${d?`(${d.split('\n').filter(l=>/^[+-][^+-]/.test(l)).length} linjer)`:''}</summary><pre>${lines}</pre>
-  <pre style="margin-top:8px">git checkout -b access/$(date +%Y%m%d)-endring
+  const d=S.diff.trim(); const lines=d?d.split('\n').map(l=>`<span class="${l.startsWith('+')&&!l.startsWith('+++')?'add':l.startsWith('-')&&!l.startsWith('---')?'del':l.startsWith('@@')?'hunk':''}">${esc(l)}</span>`).join('\n'):'<span class="muted">no changes in access.yaml</span>';
+  return `<details ${d?'open':''}><summary>git diff access.yaml ${d?`(${d.split('\n').filter(l=>/^[+-][^+-]/.test(l)).length} lines)`:''}</summary><pre>${lines}</pre>
+  <pre style="margin-top:8px">git checkout -b access/$(date +%Y%m%d)-change
 git add access.yaml && git commit -m "access: …"
 git push -u origin HEAD && gh pr create --fill</pre></details>`;
 }
@@ -310,7 +310,7 @@ if __name__ == "__main__":
     a = ap.parse_args()
     srv = ThreadingHTTPServer(("127.0.0.1", a.port), H)
     url = f"http://127.0.0.1:{a.port}/"
-    print(f"access.yaml UI: {url}  (Ctrl-C for å stoppe)")
+    print(f"access.yaml UI: {url}  (Ctrl-C to stop)")
     if not a.no_browser: webbrowser.open(url)
     try: srv.serve_forever()
     except KeyboardInterrupt: pass

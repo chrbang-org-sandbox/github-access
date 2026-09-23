@@ -1,12 +1,12 @@
-# Holder brukerlista i issue-skjemaet («Hvem») lik org-medlemskapet. Issue Forms kan ikke hente lista dynamisk,
-# så den bakes inn og oppdateres her: daglig, manuelt, og etter hver apply. Lager en PR bare når lista er endret.
-name: Oppdater brukerliste i skjemaet
+# Keeps the user list in the issue form («Who») equal to the org membership. Issue Forms cannot load the list dynamically,
+# so it is baked in and refreshed here: daily, manually, and after every apply. Creates a PR only when the list changed.
+name: Refresh user list in form
 on:
   schedule:
     - cron: "17 5 * * *"
   workflow_dispatch:
   workflow_run:
-    workflows: ["Utfør tilganger"]
+    workflows: ["Apply access"]
     types: [completed]
 permissions:
   contents: read
@@ -29,15 +29,15 @@ jobs:
         id: app
         with: { app-id: "${{ secrets.ACCESS_APP_ID }}", private-key: "${{ secrets.ACCESS_APP_PRIVATE_KEY }}", owner: "${{ github.repository_owner }}" }
 
-      - name: Regenerer skjemaet med dagens org-medlemmer
+      - name: Regenerate the form with today's org members
         id: gen
         env: { GH_TOKEN: "${{ steps.app.outputs.token }}" }
         run: |
           tools/gen-issue-form.py --users
-          if git diff --quiet -- .github/ISSUE_TEMPLATE/access-request.yml; then echo "changed=false" >> "$GITHUB_OUTPUT"; echo "Brukerlista er uendret."
+          if git diff --quiet -- .github/ISSUE_TEMPLATE/access-request.yml; then echo "changed=false" >> "$GITHUB_OUTPUT"; echo "User list unchanged."
           else echo "changed=true" >> "$GITHUB_OUTPUT"; git diff -- .github/ISSUE_TEMPLATE/access-request.yml; fi
 
-      - name: Pull request (oppdaterer eksisterende hvis den er åpen)
+      - name: Pull request (updates the existing one if it is open)
         if: steps.gen.outputs.changed == 'true'
         env: { GH_TOKEN: "${{ steps.app.outputs.token }}" }
         run: |
@@ -46,9 +46,9 @@ jobs:
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git checkout -b "$BR"
           git add .github/ISSUE_TEMPLATE/access-request.yml
-          git commit -m "chore(form): oppdater brukerlista fra org-medlemskap"
+          git commit -m "chore(form): refresh user list from org membership"
           git push --force -u origin "$BR"
           if [ -z "$(gh pr list --head "$BR" --state open --json number --jq '.[].number')" ]; then
-            gh pr create --title "chore(form): oppdater brukerlista i issue-skjemaet" \
-              --body "Org-medlemskapet har endret seg. Lista i «Hvem»-feltet i tilgangsskjemaet er regenerert med \`tools/gen-issue-form.py --users\`. Ingen tilgang endres av denne PR-en."
+            gh pr create --title "chore(form): refresh user list in the issue form" \
+              --body "Org membership changed. The list in the «Who» field of the access form was regenerated with \`tools/gen-issue-form.py --users\`. This PR changes no access."
           fi

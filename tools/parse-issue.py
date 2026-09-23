@@ -2,13 +2,13 @@
 """Parse an access-request issue (Issue Form body) into GITHUB_OUTPUT lines.
 Env: ISSUE_BODY, ISSUE_USER. Reads access.yaml for the team's display name.
 Output keys: action, team, logins (space-separated), title, reason (multiline).
-The "Hvem" dropdown is multi-select and renders as a comma-separated line; "Meg selv …" means the issue author.
+The "Who" dropdown is multi-select and renders as a comma-separated line; "Myself …" means the issue author.
 Usage: ISSUE_BODY=... ISSUE_USER=... tools/parse-issue.py >> "$GITHUB_OUTPUT" """
 import os, re, sys
 import yaml
 from common import ROOT
 
-SELF_PREFIX = "Meg selv"
+SELF_PREFIX = "Myself"
 LOGIN_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})")
 
 def fields(body):
@@ -20,9 +20,9 @@ def parse(body, author):
     m = re.search(r"\(([^()]+)\)\s*$", f.get("Team", ""))
     team = m.group(1) if m else f.get("Team", "")
     if not re.fullmatch(r"[a-z0-9-]+", team):
-        raise SystemExit(f"ugyldig team: {team!r}")
+        raise SystemExit(f"invalid team: {team!r}")
     logins = []
-    for raw in f.get("Hvem", "").split(","):
+    for raw in f.get("Who", "").split(","):
         raw = raw.strip()
         if not raw:
             continue
@@ -30,9 +30,9 @@ def parse(body, author):
     logins = list(dict.fromkeys(logins)) or [author]
     for l in logins:
         if not LOGIN_RE.fullmatch(l):
-            raise SystemExit(f"ugyldig brukernavn: {l!r}")
-    action = "remove" if f.get("Hva", "").lower().startswith("fjern") else "add"
-    return {"action": action, "team": team, "logins": logins, "reason": f.get("Begrunnelse", "")}
+            raise SystemExit(f"invalid username: {l!r}")
+    action = "remove" if f.get("Action", "").lower().startswith("remove") else "add"
+    return {"action": action, "team": team, "logins": logins, "reason": f.get("Reason", "")}
 
 def title(action, logins, team_name):
     who = ", ".join(logins) if len(logins) <= 3 else f"{len(logins)} users"
