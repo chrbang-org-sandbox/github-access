@@ -41,8 +41,8 @@ teams:
     name: Kunde A
     members: [tech-lead, utvikler-1]
     repos:
-      admin: [repository-1, repository-2]
-      read: ["*"]              # "*" = all repos in the org, including new ones
+      admin: [repository-1, "Kunde.*"]   # exact names or globs; new repos matching a glob are covered automatically
+      read: ["*"]                        # "*" = all repos in the org
 repos:
   repository-3:
     collaborators:             # direct grants, typically external people

@@ -1,5 +1,5 @@
 """Shared helpers: load desired state (access.yaml) and actual state (audit snapshot)."""
-import json, os, sys, yaml
+import fnmatch, json, os, sys, yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RANK = {"admin": 5, "maintain": 4, "write": 3, "triage": 2, "read": 1, "none": 0}
@@ -15,11 +15,15 @@ def load_access(path=None):
         return yaml.safe_load(f)
 
 def expand_repos(patterns, all_repos):
-    """'*' means every repo; otherwise exact names. Unknown names are returned too so plan can flag them."""
+    """'*' means every repo. A pattern with * ? or [ is a case-insensitive glob over the org's repos (e.g. 'Grieg.*'),
+    so new repos matching it are covered automatically. Anything else is an exact name; unknown names are returned
+    too so plan can flag them."""
     out = set()
     for p in patterns or []:
         if p == "*":
             out |= set(all_repos)
+        elif any(c in p for c in "*?["):
+            out |= {r for r in all_repos if fnmatch.fnmatchcase(r.lower(), p.lower())}
         else:
             out.add(p)
     return out
