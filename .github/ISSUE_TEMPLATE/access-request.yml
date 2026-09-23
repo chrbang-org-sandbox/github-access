@@ -8,7 +8,7 @@ body:
 - type: markdown
   attributes:
     value: 'When you submit, a pull request against `access.yaml` is created automatically. Once approved and merged, access
-      in GitHub updates by itself. See FLOW.md for details.
+      in GitHub updates by itself. See README.md for details.
 
 
       Leave the title as is. It is set automatically from your choices.'
@@ -30,7 +30,6 @@ body:
     - Kunde A (kunde-a)
     - Kunde B (kunde-b)
     - Kunde C (kunde-c)
-    - Platform (platform)
   validations:
     required: true
 - type: dropdown
