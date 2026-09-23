@@ -1,6 +1,6 @@
-# Alt som styrer tilgang eies av platform-teamet. Rulesettet på main krever godkjenning fra en code owner,
-# så ingen PR mot disse filene kan merges uten at en i platform har sett den. .github/ er med fordi
-# den som kan endre workflow-filene kan bruke App-tokenet.
+# Everything that controls access is owned by the platform team. The ruleset on main requires approval from a code owner,
+# so no PR against these files can be merged without someone in platform having seen it. .github/ is included because
+# whoever can change the workflow files can use the App token.
 access.yaml   @chrbang-org-sandbox/platform
 clients.yaml  @chrbang-org-sandbox/platform
 audit.sh      @chrbang-org-sandbox/platform

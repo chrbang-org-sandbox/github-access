@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="no">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,28 +28,28 @@
 <h1 id="title"></h1>
 <div class="meta" id="meta"></div>
 
-<h2>Nøkkeltall</h2>
+<h2>Key figures</h2>
 <div class="wrap"><table id="summary"></table></div>
 
-<h2>Endringer siden forrige snapshot</h2>
+<h2>Changes since previous snapshot</h2>
 <div id="changes"></div>
 
-<h2>Org-rulesets</h2>
+<h2>Org rulesets</h2>
 <div id="rulesets"></div>
 
-<h2>Gap: aktive committere uten write</h2>
-<p class="meta">Personer som har committet til et repo i aktivitetsvinduet men i dag har lavere enn write der. Skal være tom gjennom hele migreringen.</p>
+<h2>Gap: active committers without write</h2>
+<p class="meta">People who committed to a repo in the activity window but today have less than write there. Should stay empty throughout the migration.</p>
 <div class="wrap"><table id="gaps"></table></div>
 
 <h2>Per person</h2>
-<input type="search" id="q-people" placeholder="filtrer person, team, rolle…">
+<input type="search" id="q-people" placeholder="filter person, team, role…">
 <div class="wrap"><table id="people"></table></div>
 
 <h2>Per team</h2>
 <div class="wrap"><table id="teams"></table></div>
 
 <h2>Per repo</h2>
-<input type="search" id="q-repos" placeholder="filtrer repo, kunde, person, team, branch…">
+<input type="search" id="q-repos" placeholder="filter repo, customer, person, team, branch…">
 <div class="wrap"><table id="repos"></table></div>
 
 <script id="data" type="application/json">
@@ -64,22 +64,22 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 const tag = (txt, cls) => `<span class="tag ${cls||''}">${esc(txt)}</span>`;
 const fmtTs = ts => ts ? ts.replace(/T(\d\d)(\d\d)(\d\d)Z/, ' $1:$2 UTC') : '–';
 
-document.getElementById('title').textContent = `${L.org} · hvem har tilgang til hva`;
+document.getElementById('title').textContent = `${L.org} · who has access to what`;
 document.getElementById('meta').textContent =
-  `Snapshot ${fmtTs(L.generated_at)} · forrige ${P ? fmtTs(P.generated_at) : 'ingen'} · aktivitetsvindu ${L.activity_days} dager · base permission: ${L.org_info.base_permission} · 2FA påkrevd: ${L.org_info.two_factor_required ? 'ja' : 'nei'}`;
+  `Snapshot ${fmtTs(L.generated_at)} · previous ${P ? fmtTs(P.generated_at) : 'none'} · activity window ${L.activity_days} days · base permission: ${L.org_info.base_permission} · 2FA required: ${L.org_info.two_factor_required ? 'yes' : 'no'}`;
 
 // ---------- summary ----------
 const SUM = [
-  ['Repos', 'repos'], ['Arkiverte', 'archived'], ['Aktive (push i vinduet)', 'active'],
-  ['Medlemmer', 'members'], ['Org owners', 'owners', 'lower'], ['Outside collaborators', 'outside'],
-  ['Aktive repos uten branch protection', 'active_unprotected', 'lower'],
-  ['Aktive repos beskyttet men uten review-krav', 'active_no_review', 'lower'],
-  ['Repos kun tilgjengelig for owners', 'owners_only_repos', 'lower'],
-  ['… av dem aktive', 'owners_only_active', 'lower'],
-  ['Direkte grants på repo', 'direct_grants', 'lower'],
-  ['Effektive write+ grants (person × repo)', 'write_plus_grants', 'lower'],
-  ['Gap: aktive committere uten write', 'gaps', 'lower'],
-  ['Aktive org-rulesets', 'org_rulesets_active', 'higher'],
+  ['Repos', 'repos'], ['Archived', 'archived'], ['Active (push in the window)', 'active'],
+  ['Members', 'members'], ['Org owners', 'owners', 'lower'], ['Outside collaborators', 'outside'],
+  ['Active repos without branch protection', 'active_unprotected', 'lower'],
+  ['Active repos protected but without review requirement', 'active_no_review', 'lower'],
+  ['Repos only accessible to owners', 'owners_only_repos', 'lower'],
+  ['… of which active', 'owners_only_active', 'lower'],
+  ['Direct grants on repos', 'direct_grants', 'lower'],
+  ['Effective write+ grants (person × repo)', 'write_plus_grants', 'lower'],
+  ['Gap: active committers without write', 'gaps', 'lower'],
+  ['Active org rulesets', 'org_rulesets_active', 'higher'],
 ];
 {
   const rows = SUM.map(([label, key, want]) => {
@@ -89,36 +89,36 @@ const SUM = [
       const diff = now - prev, good = want === 'lower' ? diff < 0 : want === 'higher' ? diff > 0 : null;
       d = `<span class="${good === null ? '' : good ? 'delta-down' : 'delta-up'}">${diff > 0 ? '+' : ''}${diff}</span>`;
     }
-    return `<tr><td>${label}</td><td class="num">${now === null || now === undefined ? '<span class="muted">ikke lesbar</span>' : now}</td><td class="num muted">${prev ?? '–'}</td><td class="num">${d}</td></tr>`;
+    return `<tr><td>${label}</td><td class="num">${now === null || now === undefined ? '<span class="muted">not readable</span>' : now}</td><td class="num muted">${prev ?? '–'}</td><td class="num">${d}</td></tr>`;
   });
   document.getElementById('summary').innerHTML =
-    `<thead><tr><th>Metrikk</th><th class="num">Nå</th><th class="num">Forrige</th><th class="num">Δ</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+    `<thead><tr><th>Metric</th><th class="num">Now</th><th class="num">Previous</th><th class="num">Δ</th></tr></thead><tbody>${rows.join('')}</tbody>`;
 }
 
 // ---------- changes ----------
 {
   const el = document.getElementById('changes');
-  if (!P) el.innerHTML = '<p class="empty">Første snapshot. Kjør igjen senere for å se endringer.</p>';
+  if (!P) el.innerHTML = '<p class="empty">First snapshot. Run again later to see changes.</p>';
   else {
     const out = [];
     const setDiff = (a, b) => ({ added: b.filter(x => !a.includes(x)), removed: a.filter(x => !b.includes(x)) });
     const list = (title, arr, fmt = x => esc(x)) => { if (arr.length) out.push(`<li><b>${title}</b> (${arr.length}): ${arr.slice(0, 40).map(fmt).join(', ')}${arr.length > 40 ? ' …' : ''}</li>`); };
 
     if (P.org_info.base_permission !== L.org_info.base_permission) out.push(`<li><b>Base permission</b>: ${P.org_info.base_permission} → ${L.org_info.base_permission}</li>`);
-    let d = setDiff(P.owners, L.owners); list('Nye owners', d.added); list('Ikke lenger owner', d.removed);
-    d = setDiff(P.members, L.members); list('Nye medlemmer', d.added); list('Fjernede medlemmer', d.removed);
-    d = setDiff(P.outside, L.outside); list('Nye outside collaborators', d.added); list('Fjernede outside collaborators', d.removed);
+    let d = setDiff(P.owners, L.owners); list('New owners', d.added); list('No longer owner', d.removed);
+    d = setDiff(P.members, L.members); list('New members', d.added); list('Removed members', d.removed);
+    d = setDiff(P.outside, L.outside); list('New outside collaborators', d.added); list('Removed outside collaborators', d.removed);
 
     const pt = Object.fromEntries(P.teams.map(t => [t.slug, t])), lt = Object.fromEntries(L.teams.map(t => [t.slug, t]));
-    d = setDiff(Object.keys(pt), Object.keys(lt)); list('Nye team', d.added); list('Slettede team', d.removed);
+    d = setDiff(Object.keys(pt), Object.keys(lt)); list('New teams', d.added); list('Deleted teams', d.removed);
     for (const slug of Object.keys(lt).filter(s => pt[s])) {
       const m = setDiff(pt[slug].members, lt[slug].members);
-      list(`Team ${slug}: nye medlemmer`, m.added); list(`Team ${slug}: fjernet`, m.removed);
+      list(`Team ${slug}: new members`, m.added); list(`Team ${slug}: removed`, m.removed);
       const pg = Object.fromEntries(pt[slug].repos.map(r => [r.name, r.role])), lg = Object.fromEntries(lt[slug].repos.map(r => [r.name, r.role]));
       const gAdd = Object.keys(lg).filter(r => !pg[r]).map(r => `${r} (${lg[r]})`);
       const gRem = Object.keys(pg).filter(r => !lg[r]);
       const gChg = Object.keys(lg).filter(r => pg[r] && pg[r] !== lg[r]).map(r => `${r} (${pg[r]} → ${lg[r]})`);
-      list(`Team ${slug}: nye repo-grants`, gAdd); list(`Team ${slug}: fjernede repo-grants`, gRem); list(`Team ${slug}: endret rolle`, gChg);
+      list(`Team ${slug}: new repo grants`, gAdd); list(`Team ${slug}: removed repo grants`, gRem); list(`Team ${slug}: changed role`, gChg);
     }
 
     // effective write+ per person
@@ -131,29 +131,29 @@ const SUM = [
     for (const k of pw) if (!lw.has(k)) { const [r, u] = k.split('|'); (byLogin[u] ??= {add: [], rem: []}).rem.push(r); }
     const effRows = Object.entries(byLogin).sort((a, b) => (b[1].add.length + b[1].rem.length) - (a[1].add.length + a[1].rem.length))
       .map(([u, c]) => `<li><b>${esc(u)}</b>: ${c.add.length ? `<span class="delta-up">+${c.add.length} write+</span>` : ''} ${c.rem.length ? `<span class="delta-down">−${c.rem.length} write+</span>` : ''}` +
-        ` <details><summary>detaljer</summary>${c.add.length ? '+ ' + c.add.slice(0, 60).map(esc).join(', ') + (c.add.length > 60 ? ' …' : '') : ''}${c.add.length && c.rem.length ? '<br>' : ''}${c.rem.length ? '− ' + c.rem.slice(0, 60).map(esc).join(', ') + (c.rem.length > 60 ? ' …' : '') : ''}</details></li>`);
-    if (effRows.length) out.push(`<li><b>Effektiv write+ endret på eksisterende repos</b> for ${effRows.length} personer:<ul class="changes">${effRows.join('')}</ul></li>`);
+        ` <details><summary>details</summary>${c.add.length ? '+ ' + c.add.slice(0, 60).map(esc).join(', ') + (c.add.length > 60 ? ' …' : '') : ''}${c.add.length && c.rem.length ? '<br>' : ''}${c.rem.length ? '− ' + c.rem.slice(0, 60).map(esc).join(', ') + (c.rem.length > 60 ? ' …' : '') : ''}</details></li>`);
+    if (effRows.length) out.push(`<li><b>Effective write+ changed on existing repos</b> for ${effRows.length} people:<ul class="changes">${effRows.join('')}</ul></li>`);
 
     // protection
     const pp = Object.fromEntries(P.repos.map(r => [r.name, r])), lp = Object.fromEntries(L.repos.map(r => [r.name, r]));
-    const protStr = r => !r || !r.protection ? '–' : !r.protection.protected ? 'ingen' : `reviews=${r.protection.reviews}${r.protection.force_push ? ' force-push=on' : ''}`;
+    const protStr = r => !r || !r.protection ? '–' : !r.protection.protected ? 'none' : `reviews=${r.protection.reviews}${r.protection.force_push ? ' force-push=on' : ''}`;
     const protChg = L.repos.filter(r => pp[r.name] && protStr(pp[r.name]) !== protStr(r)).map(r => `${r.name} (${protStr(pp[r.name])} → ${protStr(r)})`);
-    list('Branch protection endret', protChg);
-    d = setDiff(Object.keys(pp), Object.keys(lp)); list('Nye repos', d.added); list('Slettede repos', d.removed);
-    const archChg = L.repos.filter(r => pp[r.name] && !pp[r.name].archived && r.archived).map(r => r.name); list('Arkivert', archChg);
+    list('Branch protection changed', protChg);
+    d = setDiff(Object.keys(pp), Object.keys(lp)); list('New repos', d.added); list('Deleted repos', d.removed);
+    const archChg = L.repos.filter(r => pp[r.name] && !pp[r.name].archived && r.archived).map(r => r.name); list('Archived', archChg);
 
     // org rulesets
     if (P.org_rulesets !== undefined && P.org_rulesets !== null && L.org_rulesets !== null) {
       const pr = Object.fromEntries(P.org_rulesets.map(r => [r.name, r])), lr = Object.fromEntries(L.org_rulesets.map(r => [r.name, r]));
-      d = setDiff(Object.keys(pr), Object.keys(lr)); list('Nye org-rulesets', d.added, n => `${esc(n)} (${esc(lr[n].enforcement)})`); list('Slettede org-rulesets', d.removed);
-      list('Org-ruleset endret enforcement', Object.keys(lr).filter(n => pr[n] && pr[n].enforcement !== lr[n].enforcement).map(n => `${n} (${pr[n].enforcement} → ${lr[n].enforcement})`));
+      d = setDiff(Object.keys(pr), Object.keys(lr)); list('New org rulesets', d.added, n => `${esc(n)} (${esc(lr[n].enforcement)})`); list('Deleted org rulesets', d.removed);
+      list('Org ruleset changed enforcement', Object.keys(lr).filter(n => pr[n] && pr[n].enforcement !== lr[n].enforcement).map(n => `${n} (${pr[n].enforcement} → ${lr[n].enforcement})`));
     }
 
     // gaps
     const gk = g => g.repo + '|' + g.login;
-    d = setDiff(P.gaps.map(gk), L.gaps.map(gk)); list('Nye gap', d.added, x => `<span class="bad">${esc(x.replace('|', ' ← '))}</span>`); list('Lukkede gap', d.removed, x => esc(x.replace('|', ' ← ')));
+    d = setDiff(P.gaps.map(gk), L.gaps.map(gk)); list('New gaps', d.added, x => `<span class="bad">${esc(x.replace('|', ' ← '))}</span>`); list('Closed gaps', d.removed, x => esc(x.replace('|', ' ← ')));
 
-    el.innerHTML = out.length ? `<ul class="changes">${out.join('')}</ul>` : '<p class="empty good">Ingen endringer siden forrige snapshot.</p>';
+    el.innerHTML = out.length ? `<ul class="changes">${out.join('')}</ul>` : '<p class="empty good">No changes since the previous snapshot.</p>';
   }
 }
 
@@ -165,7 +165,7 @@ function table(id, cols, rows, opts = {}) {
     const f = q ? rows.filter(r => (r._search || '').toLowerCase().includes(q)) : rows;
     const s = [...f].sort((a, b) => { const x = a[sortKey], y = b[sortKey]; return (typeof x === 'number' ? x - y : String(x ?? '').localeCompare(String(y ?? ''))) * sortDir; });
     el.innerHTML = `<thead><tr>${cols.map(c => `<th class="${c.num ? 'num' : ''} ${c.key === sortKey ? 'sorted' : ''}" data-k="${c.key}">${c.label}</th>`).join('')}</tr></thead>` +
-      `<tbody>${s.length ? s.map(r => `<tr>${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.fmt ? c.fmt(r[c.key], r) : esc(r[c.key] ?? '')}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${cols.length}" class="empty">${opts.empty || 'ingen'}</td></tr>`}</tbody>`;
+      `<tbody>${s.length ? s.map(r => `<tr>${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.fmt ? c.fmt(r[c.key], r) : esc(r[c.key] ?? '')}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${cols.length}" class="empty">${opts.empty || 'none'}</td></tr>`}</tbody>`;
     el.querySelectorAll('th').forEach(th => th.onclick = () => { const k = th.dataset.k; if (k === sortKey) sortDir *= -1; else { sortKey = k; sortDir = cols.find(c => c.key === k).num ? -1 : 1; } render(); });
   };
   if (opts.search) document.getElementById(opts.search).oninput = e => { q = e.target.value.toLowerCase(); render(); };
@@ -176,16 +176,16 @@ function table(id, cols, rows, opts = {}) {
 {
   const el = document.getElementById('rulesets');
   const rs = L.org_rulesets;
-  if (rs === null) el.innerHTML = '<p class="empty">Ikke lesbar: tokenet mangler admin:org-scope.</p>';
-  else if (!rs.length) el.innerHTML = '<p class="empty bad">Ingen org-rulesets. Branch protection styres i dag kun per repo.</p>';
-  else el.innerHTML = `<div class="wrap"><table><thead><tr><th>Navn</th><th>Enforcement</th><th>Target</th><th>Regler</th><th>Bypass</th><th>Repo-vilkår</th></tr></thead><tbody>${rs.map(r =>
-    `<tr><td>${esc(r.name)}</td><td class="${r.enforcement === 'active' ? 'good' : 'muted'}">${esc(r.enforcement)}</td><td>${esc(r.target)}</td><td>${r.rules.map(x => tag(x)).join('')}</td><td>${r.bypass_actors.length ? r.bypass_actors.map(b => tag(`${b.actor_type}:${b.actor_id} (${b.bypass_mode})`, 'admin')).join('') : '<span class="good">ingen</span>'}</td><td class="muted">${esc(JSON.stringify(r.conditions?.repository_name ?? r.conditions?.repository_property ?? r.conditions ?? {}))}</td></tr>`).join('')}</tbody></table></div>`;
+  if (rs === null) el.innerHTML = '<p class="empty">Not readable: the token lacks the admin:org scope.</p>';
+  else if (!rs.length) el.innerHTML = '<p class="empty bad">No org rulesets. Branch protection is currently managed per repo only.</p>';
+  else el.innerHTML = `<div class="wrap"><table><thead><tr><th>Name</th><th>Enforcement</th><th>Target</th><th>Rules</th><th>Bypass</th><th>Repo conditions</th></tr></thead><tbody>${rs.map(r =>
+    `<tr><td>${esc(r.name)}</td><td class="${r.enforcement === 'active' ? 'good' : 'muted'}">${esc(r.enforcement)}</td><td>${esc(r.target)}</td><td>${r.rules.map(x => tag(x)).join('')}</td><td>${r.bypass_actors.length ? r.bypass_actors.map(b => tag(`${b.actor_type}:${b.actor_id} (${b.bypass_mode})`, 'admin')).join('') : '<span class="good">none</span>'}</td><td class="muted">${esc(JSON.stringify(r.conditions?.repository_name ?? r.conditions?.repository_property ?? r.conditions ?? {}))}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // ---------- gaps ----------
 table('gaps', [
-  {key: 'login', label: 'Person'}, {key: 'repo', label: 'Repo'}, {key: 'commits', label: 'Commits i vinduet', num: true}, {key: 'level', label: 'Har i dag'},
-], L.gaps, {sort: 'commits', dir: -1, empty: 'Ingen gap. Alle aktive committere har write eller mer.'});
+  {key: 'login', label: 'Person'}, {key: 'repo', label: 'Repo'}, {key: 'commits', label: 'Commits in window', num: true}, {key: 'level', label: 'Has today'},
+], L.gaps, {sort: 'commits', dir: -1, empty: 'No gaps. All active committers have write or more.'});
 
 // ---------- people ----------
 {
@@ -204,23 +204,23 @@ table('gaps', [
   const rows = [...all].map(u => {
     const p = perLogin[u] || {admin: 0, maintain: 0, write: 0, read: 0, wplus_active: 0, direct: 0, sources: new Set()};
     const teams = L.teams.filter(t => t.members.includes(u)).map(t => t.slug);
-    const kind = L.owners.includes(u) ? 'owner' : L.members.includes(u) ? 'member' : L.outside.includes(u) ? 'outside' : 'ikke i org';
+    const kind = L.owners.includes(u) ? 'owner' : L.members.includes(u) ? 'member' : L.outside.includes(u) ? 'outside' : 'not in org';
     return {login: u, kind, teams: teams.join(' '), wplus: p.admin + p.maintain + p.write, wplus_active: p.wplus_active, admin: p.admin, maintain: p.maintain, write: p.write, read: p.read, direct: p.direct, commits: commits[u] || 0,
       _search: [u, kind, ...teams].join(' ')};
   });
   table('people', [
-    {key: 'login', label: 'Person'}, {key: 'kind', label: 'Type', fmt: v => `<span class="${v === 'owner' ? 'bad' : v === 'ikke i org' ? 'muted' : ''}">${v}</span>`},
+    {key: 'login', label: 'Person'}, {key: 'kind', label: 'Type', fmt: v => `<span class="${v === 'owner' ? 'bad' : v === 'not in org' ? 'muted' : ''}">${v}</span>`},
     {key: 'teams', label: 'Team', fmt: v => v.split(' ').filter(Boolean).map(t => tag(t)).join('')},
-    {key: 'wplus', label: 'Write+ repos', num: true}, {key: 'wplus_active', label: '… aktive', num: true},
+    {key: 'wplus', label: 'Write+ repos', num: true}, {key: 'wplus_active', label: '… active', num: true},
     {key: 'admin', label: 'Admin', num: true}, {key: 'maintain', label: 'Maintain', num: true}, {key: 'write', label: 'Write', num: true}, {key: 'read', label: 'Read', num: true},
-    {key: 'direct', label: 'Direkte grants', num: true}, {key: 'commits', label: 'Commits i vinduet', num: true},
+    {key: 'direct', label: 'Direct grants', num: true}, {key: 'commits', label: 'Commits in window', num: true},
   ], rows, {sort: 'wplus', dir: -1, search: 'q-people'});
 }
 
 // ---------- teams ----------
 table('teams', [
-  {key: 'slug', label: 'Team'}, {key: 'members_n', label: 'Medl.', num: true}, {key: 'repos_n', label: 'Repos', num: true},
-  {key: 'roles', label: 'Roller'}, {key: 'members', label: 'Medlemmer'}, {key: 'description', label: 'Beskrivelse'},
+  {key: 'slug', label: 'Team'}, {key: 'members_n', label: 'Members', num: true}, {key: 'repos_n', label: 'Repos', num: true},
+  {key: 'roles', label: 'Roles'}, {key: 'members', label: 'Members'}, {key: 'description', label: 'Description'},
 ], L.teams.map(t => {
   const rc = {}; for (const r of t.repos) rc[r.role] = (rc[r.role] || 0) + 1;
   return {slug: t.slug, members_n: t.members.length, repos_n: t.repos.length, roles: Object.entries(rc).map(([k, v]) => `${k}=${v}`).join(' '), members: t.members.join(', '), description: t.description};
@@ -234,21 +234,21 @@ table('teams', [
                      {label: 'internal', res: (((C.internal || {}).match) || []).map(globRe)}] : [];
   const clientOf = name => { const n = name.toLowerCase(); const hit = rules.find(r => r.res.some(re => re.test(n))); return hit ? hit.label : (C ? '' : null); };
   const rows = L.repos.map(r => ({
-    name: r.name, client: clientOf(r.name), status: r.archived ? 'arkivert' : r.active ? 'aktiv' : 'stille', branch: r.default_branch,
-    protection: !r.active ? null : !r.protection?.protected ? 'ingen' : `reviews=${r.protection.reviews}${r.protection.force_push ? ', force-push' : ''}${r.rulesets.length ? `, rulesets=${r.rulesets.length}` : ''}`,
+    name: r.name, client: clientOf(r.name), status: r.archived ? 'archived' : r.active ? 'active' : 'dormant', branch: r.default_branch,
+    protection: !r.active ? null : !r.protection?.protected ? 'none' : `reviews=${r.protection.reviews}${r.protection.force_push ? ', force-push' : ''}${r.rulesets.length ? `, rulesets=${r.rulesets.length}` : ''}`,
     teams: r.teams, direct: r.direct, committers: r.committers, owners_only: r.teams.length === 0 && r.direct.length === 0,
-    _search: [r.name, clientOf(r.name) || '', r.default_branch, r.archived ? 'arkivert' : r.active ? 'aktiv' : 'stille', ...r.teams.map(t => t.team + ' ' + t.role), ...r.direct.map(d => d.login + ' ' + d.role), ...r.committers.map(c => c.login), r.teams.length === 0 && r.direct.length === 0 ? 'owners-only' : ''].join(' '),
+    _search: [r.name, clientOf(r.name) || '', r.default_branch, r.archived ? 'archived' : r.active ? 'active' : 'dormant', ...r.teams.map(t => t.team + ' ' + t.role), ...r.direct.map(d => d.login + ' ' + d.role), ...r.committers.map(c => c.login), r.teams.length === 0 && r.direct.length === 0 ? 'owners-only' : ''].join(' '),
   }));
   table('repos', [
     {key: 'name', label: 'Repo'},
-    ...(C ? [{key: 'client', label: 'Kunde', fmt: (v, r) => v ? esc(v) : (r.status === 'aktiv' ? '<span class="bad">mangler</span>' : '<span class="muted">–</span>')}] : []),
-    {key: 'status', label: 'Status', fmt: v => `<span class="${v === 'aktiv' ? 'good' : 'muted'}">${v}</span>`},
+    ...(C ? [{key: 'client', label: 'Customer', fmt: (v, r) => v ? esc(v) : (r.status === 'active' ? '<span class="bad">missing</span>' : '<span class="muted">–</span>')}] : []),
+    {key: 'status', label: 'Status', fmt: v => `<span class="${v === 'active' ? 'good' : 'muted'}">${v}</span>`},
     {key: 'branch', label: 'Default'},
-    {key: 'protection', label: 'Protection', fmt: v => v === null ? '<span class="muted">–</span>' : v === 'ingen' ? '<span class="bad">ingen</span>' : esc(v)},
-    {key: 'teams', label: 'Team-grants', fmt: v => v.length ? v.map(t => tag(`${t.team}: ${t.role}`, t.role)).join('') : '<span class="muted">–</span>'},
-    {key: 'direct', label: 'Direkte', fmt: v => v.length ? v.map(d => tag(`${d.login}: ${d.role}`, d.role)).join('') : '<span class="muted">–</span>'},
-    {key: 'committers', label: 'Committere i vinduet', fmt: v => v.length ? v.map(c => `${esc(c.login)} (${c.commits})`).join(', ') : '<span class="muted">–</span>'},
-    {key: 'owners_only', label: 'Kun owners', fmt: v => v ? '<span class="bad">ja</span>' : ''},
+    {key: 'protection', label: 'Protection', fmt: v => v === null ? '<span class="muted">–</span>' : v === 'none' ? '<span class="bad">none</span>' : esc(v)},
+    {key: 'teams', label: 'Team grants', fmt: v => v.length ? v.map(t => tag(`${t.team}: ${t.role}`, t.role)).join('') : '<span class="muted">–</span>'},
+    {key: 'direct', label: 'Direct', fmt: v => v.length ? v.map(d => tag(`${d.login}: ${d.role}`, d.role)).join('') : '<span class="muted">–</span>'},
+    {key: 'committers', label: 'Committers in window', fmt: v => v.length ? v.map(c => `${esc(c.login)} (${c.commits})`).join(', ') : '<span class="muted">–</span>'},
+    {key: 'owners_only', label: 'Owners only', fmt: v => v ? '<span class="bad">yes</span>' : ''},
   ], rows, {sort: 'name', search: 'q-repos'});
 }
 </script>

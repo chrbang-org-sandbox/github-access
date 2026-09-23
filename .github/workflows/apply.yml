@@ -1,6 +1,6 @@
-# Merge til main med endret access.yaml -> tilgangene i GitHub oppdateres.
-# Dette er det eneste stedet som skriver til orgen. Kjører kun fra main, med kortlevd GitHub App-token.
-name: Utfør tilganger
+# Merge to main with a changed access.yaml -> access in GitHub is updated.
+# This is the only place that writes to the org. Runs only from main, with a short-lived GitHub App token.
+name: Apply access
 on:
   push:
     branches: [main]
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       allow_structural:
-        description: "Tillat owner-endringer, base permission og sletting av team"
+        description: "Allow owner changes, base permission and team deletion"
         type: boolean
         default: false
 permissions:
@@ -31,7 +31,7 @@ jobs:
         id: app
         with: { app-id: "${{ secrets.ACCESS_APP_ID }}", private-key: "${{ secrets.ACCESS_APP_PRIVATE_KEY }}", owner: "${{ github.repository_owner }}" }
 
-      - name: Finn PR-en som ble merget, og om strukturendringer er godkjent
+      - name: Find the merged PR, and whether structural changes are approved
         id: pr
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
@@ -39,10 +39,10 @@ jobs:
           echo "number=$pr" >> "$GITHUB_OUTPUT"
           allow=false
           [ "${{ inputs.allow_structural }}" = "true" ] && allow=true
-          if [ -n "$pr" ] && gh pr view "$pr" --json labels --jq '.labels[].name' | grep -qx 'godkjent-strukturendring'; then allow=true; fi
+          if [ -n "$pr" ] && gh pr view "$pr" --json labels --jq '.labels[].name' | grep -qx 'approved-structural-change'; then allow=true; fi
           echo "allow_structural=$allow" >> "$GITHUB_OUTPUT"
 
-      - name: Snapshot, plan, apply, verifiser
+      - name: Snapshot, plan, apply, verify
         id: run
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
@@ -50,12 +50,12 @@ jobs:
         run: |
           ./audit.sh
           set +e; tools/plan.py | tee plan.txt; rc=${PIPESTATUS[0]}; set -e
-          if [ $rc -eq 0 ]; then echo "Ingen endringer å utføre." > result.txt; exit 0; fi
+          if [ $rc -eq 0 ]; then echo "Nothing to apply." > result.txt; exit 0; fi
           [ $rc -eq 2 ] || exit $rc
           tools/apply.py --auto $( [ "$ALLOW" = true ] && echo --allow-structural ) | tee result.txt
           ./audit.sh
-          if ! tools/plan.py > verify.txt; then echo "Etter apply er planen fortsatt ikke tom:"; cat verify.txt; exit 1; fi
-          echo "Verifisert: config og virkelighet er like." | tee -a result.txt
+          if ! tools/plan.py > verify.txt; then echo "After apply the plan is still not empty:"; cat verify.txt; exit 1; fi
+          echo "Verified: config and reality match." | tee -a result.txt
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -70,10 +70,10 @@ jobs:
           retention-days: 90
           if-no-files-found: ignore
 
-      - name: Rapporter på PR-en
+      - name: Report on the PR
         if: always() && steps.pr.outputs.number != ''
         env: { GH_TOKEN: "${{ github.token }}", PR: "${{ steps.pr.outputs.number }}", STATUS: "${{ steps.run.outcome }}" }
         run: |
           run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          if [ "$STATUS" = success ]; then icon="✅ Tilganger oppdatert"; else icon="❌ Apply feilet, ingen eller delvis endring. En owner må se på det."; fi
-          gh pr comment "$PR" --body "$(printf '%s\n\n```\n%s\n```\n[Kjøring](%s)' "$icon" "$(cat result.txt 2>/dev/null | tail -60)" "$run_url")"
+          if [ "$STATUS" = success ]; then icon="✅ Access updated"; else icon="❌ Apply failed, no or partial change. An owner must look at it."; fi
+          gh pr comment "$PR" --body "$(printf '%s\n\n```\n%s\n```\n[Run](%s)' "$icon" "$(cat result.txt 2>/dev/null | tail -60)" "$run_url")"

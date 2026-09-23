@@ -1,2 +1,2 @@
-# Kun skjemaet kan brukes; blanke issues er skrudd av.
+# Only the form can be used; blank issues are turned off.
 blank_issues_enabled: false

@@ -1,6 +1,6 @@
-# Repo -> kunde for sandkassen. Generiske navn; kundene er fiktive.
-# match = glob på reponavn, case-insensitive. Aktive repos uten match gir advarsel i tools/plan.py.
-# name = team-navn i GitHub; team-slug utledes (Kunde A -> kunde-a).
+# Repo -> customer for the sandbox. Generic names; the customers are fictional.
+# match = glob on repo name, case-insensitive. Active repos without a match give a warning in tools/plan.py.
+# name = team name in GitHub; the team slug is derived (Kunde A -> kunde-a).
 clients:
   kunde-a:
     name: Kunde A
@@ -13,4 +13,4 @@ clients:
     match: [repository-4, repository-6]
 internal:
   match: [repository-5]
-exclude: [github-access]   # kun platform-teamet, skrevet for hånd i access.yaml
+exclude: [github-access]   # platform team only, written by hand in access.yaml
