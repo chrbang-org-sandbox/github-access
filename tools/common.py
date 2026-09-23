@@ -1,8 +1,14 @@
 """Shared helpers: load desired state (access.yaml) and actual state (audit snapshot)."""
-import fnmatch, json, os, sys, yaml
+import fnmatch, json, os, re, sys, unicodedata, yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RANK = {"admin": 5, "maintain": 4, "write": 3, "triage": 2, "read": 1, "none": 0}
+
+def slugify(name):
+    """GitHub-style team slug: lowercase ASCII, non-alphanumerics -> '-'. ø/æ/å/ö transliterated so the slug is stable."""
+    s = name.lower().replace("ø", "o").replace("æ", "ae").replace("å", "a").replace("ö", "o").replace("ä", "a").replace("ü", "u")
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", s)).strip("-")
 
 def load_snapshot(path=None):
     path = path or os.path.join(ROOT, "latest.json")

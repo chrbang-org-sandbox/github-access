@@ -28,6 +28,7 @@ Requires `gh` logged in as org owner with scopes `repo`, `admin:org`, plus `jq` 
 | `tools/ui.py` | Local web UI (127.0.0.1:8787) to see a person's teams and roles, and add/remove members. Writes only `access.yaml`; commit and PR are done afterwards. |
 | `tools/gen-issue-form.py` | Generates the issue form: teams from `access.yaml`, users from the org membership (`--users`). `--check` only checks the team list. |
 | `tools/parse-issue.py` | Reads a submitted form into action, team and user list. Used by `access-request.yml`; tests in `tools/test_parse_issue.py`. |
+| `tools/parse-new-team.py`, `tools/new-team.py` | Read the new-team form, and add the customer to `clients.yaml` and the team to `access.yaml` as text edits. Used by `new-team.yml`; tests in `tools/test_new_team.py`. |
 | `report.template.html` | Template for the report. |
 
 ## access.yaml
@@ -55,12 +56,15 @@ Teams not present in the file are deleted by apply. Direct collaborators not pre
 ## For developers: requesting access
 
 Open an issue with the form "Request team access". The rest happens automatically. Read [FLOW.md](FLOW.md).
+A customer without a team: the form "Request a new team" (customer name, repo globs, initial members) opens a PR
+that adds the team to `access.yaml` and `clients.yaml`; on merge the team is created.
 
 ## Automation (GitHub Actions)
 
 | Workflow | Trigger | Does |
 |---|---|---|
 | `access-request.yml` | new issue with label `access-request` | reads the form with `tools/parse-issue.py` (one or more users), sets the title ("Add octocat to Kunde A team"), runs `tools/request.py` per user, creates a branch and PR, comments on the issue |
+| `new-team.yml` | new issue with label `new-team` | reads the form with `tools/parse-new-team.py`, runs `tools/new-team.py` (adds the customer to `clients.yaml` and the team to `access.yaml`, checks that the globs match repos), regenerates the forms, creates a branch and PR |
 | `refresh-form.yml` | daily, manually, and after `apply.yml` | regenerates the user list ("Who") in the issue form from the org membership and opens a PR if it changed |
 | `check.yml` | PR that changes `access.yaml` etc. | validates YAML and form, takes a snapshot, posts the plan as a PR comment |
 | `apply.yml` | merge to `main` with changed `access.yaml` | snapshot → plan → `tools/apply.py --auto` → new snapshot → the plan should be empty. Comments the result on the PR |
@@ -82,8 +86,8 @@ on the PR (set by an owner) or `workflow_dispatch` with `allow_structural`.
 5. Repo settings: Pull requests → "Allow auto-merge" *on*, if approval alone should be enough.
    ("Allow GitHub Actions to create and approve pull requests" is not needed: PRs are created with the App token, not `GITHUB_TOKEN`.)
 6. Notifications: `/github subscribe <org>/github-access pulls issues` in a Slack channel, and Scheduled reminders on team `platform`.
-7. Labels `access-request` and `approved-structural-change` must exist in the repo (the issue form does not set labels that are missing):
-   `gh label create access-request` and `gh label create approved-structural-change`.
+7. Labels `access-request`, `new-team` and `approved-structural-change` must exist in the repo (the issue forms do not set labels that are missing):
+   `gh label create access-request`, `gh label create new-team` and `gh label create approved-structural-change`.
 8. Run `tools/gen-issue-form.py` after every change to the team list, otherwise `check.yml` fails. The user list in the form
    ("Who", all org members) is kept up to date by `refresh-form.yml`; locally: `tools/gen-issue-form.py --users`.
 
