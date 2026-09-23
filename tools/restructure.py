@@ -7,7 +7,7 @@ Usage: tools/restructure.py [--snapshot file] [--clients clients.yaml] > access.
 import argparse, fnmatch, os, re, sys, unicodedata
 from collections import Counter, defaultdict
 import yaml
-from common import ROOT, RANK, load_snapshot, actual_state
+from common import ROOT, RANK, load_snapshot, actual_state, slugify
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--snapshot"); ap.add_argument("--clients", default=os.path.join(ROOT, "clients.yaml"))
@@ -23,12 +23,6 @@ is_employee = lambda u: u in members and "[bot]" not in u and not u.startswith("
 # Role a customer team gets on its repos. admin (not write) because Actions secrets/variables and environments
 # can only be managed by repo admins. Blast radius is limited by org settings and org rulesets, see README.
 TEAM_ROLE = "admin"
-
-def slugify(name):
-    """GitHub-style team slug: lowercase ASCII, non-alphanumerics -> '-'. ø/æ/å/ö transliterated so the slug is stable."""
-    s = name.lower().replace("ø", "o").replace("æ", "ae").replace("å", "a").replace("ö", "o").replace("ä", "a").replace("ü", "u")
-    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
-    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", s)).strip("-")
 
 def matches(name, globs):
     return any(fnmatch.fnmatchcase(name.lower(), g.lower()) for g in globs or [])

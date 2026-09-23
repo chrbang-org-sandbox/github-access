@@ -22,6 +22,7 @@ jobs:
           tools/gen-issue-form.py --check
           python3 tools/test_parse_issue.py
           python3 tools/test_common.py
+          python3 tools/test_new_team.py
       - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         id: app
         with: { app-id: "${{ secrets.ACCESS_APP_ID }}", private-key: "${{ secrets.ACCESS_APP_PRIVATE_KEY }}", owner: "${{ github.repository_owner }}" }
