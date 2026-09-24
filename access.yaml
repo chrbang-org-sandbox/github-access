@@ -36,9 +36,7 @@ teams:
   kunde-c:
     name: Kunde C
     description: Kunde C
-    members:
-    - chrbang
-    - pedarn
+    members: []
     repos:
       admin:
       - repository-4
