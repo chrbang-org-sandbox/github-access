@@ -1,0 +1,61 @@
+# Daily drift report. Reads the org, compares with access.yaml and keeps ONE issue "Drift report" up to date:
+# active repos without a team, direct grants given in the UI, repos no customer claims, and pending plan changes.
+# Changes nothing in the org. Closes the issue when everything is clean.
+name: Drift report
+on:
+  schedule:
+    - cron: "37 6 * * 1-5"
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: drift
+  cancel-in-progress: true
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    environment: github-app
+    env: { ORG: "${{ github.repository_owner }}", TITLE: "Drift report", MARKER: "<!-- drift-report -->" }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with: { python-version: "3.12" }
+      - run: pip install --quiet pyyaml
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
+        id: app
+        with: { app-id: "${{ secrets.ACCESS_APP_ID }}", private-key: "${{ secrets.ACCESS_APP_PRIVATE_KEY }}", owner: "${{ github.repository_owner }}" }
+
+      - name: Snapshot, plan, drift
+        id: drift
+        env: { GH_TOKEN: "${{ steps.app.outputs.token }}" }
+        run: |
+          ./audit.sh
+          set +e; tools/plan.py > plan.txt; rc=$?; set -e
+          [ $rc -eq 0 ] || [ $rc -eq 2 ] || { cat plan.txt; exit $rc; }
+          set +e; tools/drift.py > drift.md; rc=$?; set -e
+          [ $rc -eq 0 ] || [ $rc -eq 2 ] || { cat drift.md; exit $rc; }
+          echo "dirty=$([ $rc -eq 2 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          cat drift.md
+
+      - name: Create or update the issue, or close it when clean
+        env: { GH_TOKEN: "${{ github.token }}", DIRTY: "${{ steps.drift.outputs.dirty }}" }
+        run: |
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          body=$(printf '%s\n%s\n\n_Updated by [drift.yml](%s) on every run. Nothing here is changed automatically; the next apply removes direct grants that are not in `access.yaml`._\n' "$MARKER" "$(cat drift.md)" "$run_url")
+          n=$(gh issue list --state open --search "in:title \"$TITLE\"" --json number,body --jq ".[] | select(.body | startswith(\"$MARKER\")) | .number" | head -1)
+          if [ "$DIRTY" = true ]; then
+            if [ -n "$n" ]; then gh issue edit "$n" --body "$body"; echo "updated #$n"
+            else gh issue create --title "$TITLE" --body "$body"; fi
+          elif [ -n "$n" ]; then
+            gh issue close "$n" --comment "Clean on $(date -u +%F): every active repo has a team, no direct grants outside access.yaml, plan empty."
+          else echo "clean, no issue"; fi
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: drift-${{ github.run_number }}
+          path: |
+            drift.md
+            plan.txt
+            report.html
+          retention-days: 30
