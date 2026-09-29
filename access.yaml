@@ -44,6 +44,15 @@ teams:
       - repository-4
       - repository-6
 
+  nykunde:
+    name: Nykunde
+    description: Nykunde
+    members:
+    - pedarn
+    repos:
+      admin:
+      - "Nykunde.*"
+
   platform:
     name: Platform
     description: Owns access management. Approves and merges PRs in github-access.

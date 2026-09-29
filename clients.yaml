@@ -11,6 +11,9 @@ clients:
   kunde-c:
     name: Kunde C
     match: [repository-4, repository-6]
+  nykunde:
+    name: Nykunde
+    match: ["Nykunde.*"]
 internal:
   match: [repository-5]
 exclude: [github-access]   # platform team only, written by hand in access.yaml
