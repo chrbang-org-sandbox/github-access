@@ -48,6 +48,7 @@ teams:
     name: Nykunde
     description: Nykunde
     members:
+    - KennethHoff
     - pedarn
     repos:
       admin:
