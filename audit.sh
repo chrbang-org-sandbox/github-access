@@ -20,6 +20,9 @@ if date -u -v-1d +%F >/dev/null 2>&1; then SINCE=$(date -u -v-"${DAYS}"d +%Y-%m-
 log(){ printf '%s %s\n' "$(date +%H:%M:%S)" "$*" >&2; }
 api_or_null(){ local out; if out=$(gh api "$@" 2>/dev/null); then printf '%s' "$out"; else printf 'null'; fi; }
 lines_to_json(){ jq -Rs 'split("\n")|map(select(length>0))|sort'; }
+# gh api prints the error body (JSON like {"message":"Git Repository is empty."}) to stdout on failure, so a plain
+# `gh api ... || true` inside a pipe feeds that body to jq. Only pass the output on when the call succeeded.
+api_lines(){ local out; if out=$(gh api "$@" 2>/dev/null) && [ -n "$out" ]; then printf '%s\n' "$out"; fi; return 0; }
 
 log "org $ORG, activity window since $SINCE"
 gh api "orgs/$ORG" > "$WORK/org.json"
@@ -52,12 +55,12 @@ export ORG WORK
 fetch_repo() {
   local r="$1"
   local all direct teams
-  all=$( (gh api "repos/$ORG/$r/collaborators" --paginate --jq '.[] | {login, level: .role_name}' 2>/dev/null || true) | jq -s 'sort_by(.login)')
-  direct=$( (gh api "repos/$ORG/$r/collaborators?affiliation=direct" --paginate --jq '.[] | {login, role: .role_name}' 2>/dev/null || true) | jq -s 'sort_by(.login)')
-  teams=$( (gh api "repos/$ORG/$r/teams" --paginate --jq '.[] | {team: .slug, role: ({pull:"read", push:"write", admin:"admin", maintain:"maintain", triage:"triage"}[.permission] // .permission)}' 2>/dev/null || true) | jq -s 'sort_by(.team)')
+  all=$(api_lines "repos/$ORG/$r/collaborators" --paginate --jq '.[] | {login, level: .role_name}' | jq -s 'sort_by(.login)')
+  direct=$(api_lines "repos/$ORG/$r/collaborators?affiliation=direct" --paginate --jq '.[] | {login, role: .role_name}' | jq -s 'sort_by(.login)')
+  teams=$(api_lines "repos/$ORG/$r/teams" --paginate --jq '.[] | {team: .slug, role: ({pull:"read", push:"write", admin:"admin", maintain:"maintain", triage:"triage"}[.permission] // .permission)}' | jq -s 'sort_by(.team)')
   jq -cn --arg repo "$r" --argjson a "$all" --argjson d "$direct" --argjson t "$teams" '{repo:$repo, collaborators:$a, direct:$d, teams:$t}' > "$WORK/collab/$r.json"
 }
-export -f fetch_repo
+export -f fetch_repo api_lines   # xargs runs fetch_repo in fresh bash processes; helpers must be exported too
 jq -r '.[].name' "$WORK/repos.json" | xargs -P "$PAR" -I{} bash -c 'fetch_repo "$1"' _ {}
 cat "$WORK"/collab/*.json > "$WORK/collab.ndjson"
 log "collaborator records: $(wc -l < "$WORK/collab.ndjson")"
@@ -69,7 +72,7 @@ for r in $ACTIVE; do
   b=$(jq -r --arg r "$r" '.[] | select(.name==$r) | .default_branch' "$WORK/repos.json")
   p=$(api_or_null "repos/$ORG/$r/branches/$b/protection" | jq -c 'if . == null then {protected:false} else {protected:true, reviews:(.required_pull_request_reviews.required_approving_review_count // 0), force_push:(.allow_force_pushes.enabled // false), code_owners:(.required_pull_request_reviews.require_code_owner_reviews // false)} end')
   rs=$(api_or_null "repos/$ORG/$r/rulesets" | jq -c 'if . == null then [] else map(.name) end')
-  cm=$( (gh api "repos/$ORG/$r/commits?since=$SINCE&per_page=100" --paginate --jq '.[] | (.author.login // ("~" + .commit.author.name))' 2>/dev/null || true) | sort | uniq -c | awk '{printf "{\"login\":\"%s\",\"commits\":%d}\n",$2,$1}' | jq -s 'sort_by(-.commits, .login)')
+  cm=$(api_lines "repos/$ORG/$r/commits?since=$SINCE&per_page=100" --paginate --jq '.[] | (.author.login // ("~" + .commit.author.name))' | sort | uniq -c | awk '{printf "{\"login\":\"%s\",\"commits\":%d}\n",$2,$1}' | jq -s 'sort_by(-.commits, .login)')
   jq -cn --arg repo "$r" --argjson p "$p" --argjson rs "$rs" --argjson cm "$cm" '{repo:$repo, protection:$p, rulesets:$rs, committers:$cm}' >> "$WORK/active.ndjson"
 done
 
