@@ -30,6 +30,7 @@ body:
     - Kunde A (kunde-a)
     - Kunde B (kunde-b)
     - Kunde C (kunde-c)
+    - Nykunde (nykunde)
   validations:
     required: true
 - type: dropdown
