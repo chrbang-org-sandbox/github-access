@@ -39,7 +39,7 @@ jobs:
           cat drift.md
 
       - name: Create or update the issue, or close it when clean
-        env: { GH_TOKEN: "${{ github.token }}", DIRTY: "${{ steps.drift.outputs.dirty }}" }
+        env: { GH_TOKEN: "${{ steps.app.outputs.token }}", DIRTY: "${{ steps.drift.outputs.dirty }}" }   # app token: the @org/platform mention only resolves with org visibility
         run: |
           run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           body=$(printf '%s\n%s\n\n_Updated by [drift.yml](%s) on every run. Nothing here is changed automatically; the next apply removes direct grants that are not in `access.yaml`._\n' "$MARKER" "$(cat drift.md)" "$run_url")

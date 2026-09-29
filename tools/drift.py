@@ -28,8 +28,9 @@ for r in sorted(active, key=lambda r: r["name"].lower()):
     admins = ", ".join(f"@{d['login']}" for d in r["direct"] if d["role"] == "admin" and d["login"] in members) or "nobody but owners"
     rows.append(f"| `{r['name']}` | {r['pushed_at'][:10]} | {admins} |")
 if rows:
-    sections.append("### Active repos without a team\n\nNo team has write or admin here. Ask for a team with the "
-                    "\"Request a new team\" form, or add the repo to an existing team's `repos` in `access.yaml`.\n\n"
+    sections.append("### Active repos without a team\n\nNo team has write or admin here, only whoever created the repo. "
+                    "Platform: add the repo to an existing team's `repos` in `access.yaml`, or add a new team there and a glob "
+                    "in `clients.yaml`. The next apply removes the creator's direct admin.\n\n"
                     "| Repo | Last push | Direct admin today |\n|---|---|---|\n" + "\n".join(rows))
 
 # 2. direct grants that exist in GitHub but not in access.yaml: removed on the next apply
@@ -68,6 +69,6 @@ if os.path.exists(plan_path):
 if not sections:
     print("Clean: every active repo has a team, no direct grants outside access.yaml, all repos attributed, plan empty.")
     sys.exit(0)
-print(f"Snapshot `{snap['generated_at']}`, activity window {snap['activity_days']} days.\n")
+print(f"@{cfg['org']}/platform: something needs a look.\n\nSnapshot `{snap['generated_at']}`, activity window {snap['activity_days']} days.\n")
 print("\n\n".join(sections))
 sys.exit(2)
