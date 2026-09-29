@@ -26,6 +26,7 @@ body:
   attributes:
     label: Team
     options:
+    - Alfa lag kunden (alfa-lag-kunden)
     - Internal (internal)
     - Kunde A (kunde-a)
     - Kunde B (kunde-b)

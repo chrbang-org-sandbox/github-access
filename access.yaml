@@ -44,6 +44,15 @@ teams:
       - repository-4
       - repository-6
 
+  alfa-lag-kunden:
+    name: Alfa lag kunden
+    description: Alfa lag kunden
+    members:
+    - KennethHoff
+    repos:
+      admin:
+      - "alfa.*"
+
   platform:
     name: Platform
     description: Owns access management. Approves and merges PRs in github-access.

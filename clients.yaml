@@ -11,6 +11,10 @@ clients:
   kunde-c:
     name: Kunde C
     match: [repository-4, repository-6]
+  alfa-lag-kunden:
+    name: Alfa lag kunden
+    match: ["alfa.*"]
+
 internal:
   match: [repository-5]
 exclude: [github-access]   # platform team only, written by hand in access.yaml
