@@ -29,6 +29,7 @@ Requires `gh` logged in as org owner with scopes `repo`, `admin:org`, plus `jq` 
 | `tools/gen-issue-form.py` | Generates the issue form: teams from `access.yaml`, users from the org membership (`--users`). `--check` only checks the team list. |
 | `tools/parse-issue.py` | Reads a submitted form into action, team and user list. Used by `access-request.yml`; tests in `tools/test_parse_issue.py`. |
 | `tools/parse-new-team.py`, `tools/new-team.py` | Read the new-team form, and add the customer to `clients.yaml` and the team to `access.yaml` as text edits. Used by `new-team.yml`; tests in `tools/test_new_team.py`. |
+| `tools/drift.py` | Markdown drift report from `latest.json`, `access.yaml`, `clients.yaml` and `plan.json`. Exit 2 when there is something to report. Used by `drift.yml`. |
 | `report.template.html` | Template for the report. |
 
 ## access.yaml
@@ -65,6 +66,7 @@ that adds the team to `access.yaml` and `clients.yaml`; on merge the team is cre
 |---|---|---|
 | `access-request.yml` | new issue with label `access-request` | reads the form with `tools/parse-issue.py` (one or more users), sets the title ("Add octocat to Kunde A team"), runs `tools/request.py` per user, creates a branch and PR, comments on the issue |
 | `new-team.yml` | new issue with label `new-team` | reads the form with `tools/parse-new-team.py`, runs `tools/new-team.py` (adds the customer to `clients.yaml` and the team to `access.yaml`, checks that the globs match repos), regenerates the forms, creates a branch and PR |
+| `drift.yml` | weekdays, and manually | snapshot + plan + `tools/drift.py`: keeps one issue "Drift report" up to date with active repos without a team, direct grants given in the UI, repos no customer claims, and pending plan changes. Closes it when clean. Changes nothing |
 | `refresh-form.yml` | daily, manually, and after `apply.yml` | regenerates the user list ("Who") in the issue form from the org membership and opens a PR if it changed |
 | `check.yml` | PR that changes `access.yaml` etc. | validates YAML and form, takes a snapshot, posts the plan as a PR comment |
 | `apply.yml` | merge to `main` with changed `access.yaml` | snapshot → plan → `tools/apply.py --auto` → new snapshot → the plan should be empty. Comments the result on the PR |
