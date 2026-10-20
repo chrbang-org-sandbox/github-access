@@ -18,7 +18,9 @@ teams:
     description: Kunde A
     maintainers:
     - chrbang
-    members: []
+    members:
+    - AdrianGrotter
+    - KennethHoff
     repos:
       admin:
       - repository-1
