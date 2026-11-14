@@ -43,7 +43,6 @@ body:
     - Myself (the requester)
     - AdrianGrotter
     - chrbang
-    - KennethHoff
     - pedarn
     default: 0
 - type: textarea
